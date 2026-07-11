@@ -411,3 +411,245 @@ tr:hover td {
     min-width: 220px;
     background: #f8fafc;
 }
+
+/* ---------- Google-Forms style question cards ---------- */
+.gform-wrap {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 24px 16px 60px;
+}
+
+.gform-header {
+    background: #4338CA;
+    color: white;
+    border-radius: 12px 12px 0 0;
+    padding: 28px 26px;
+    margin-bottom: 2px;
+}
+
+.gform-header h1 {
+    margin: 0 0 8px;
+    font-size: 24px;
+    font-weight: 700;
+}
+
+.gform-header p {
+    margin: 0;
+    font-size: 14px;
+    opacity: .9;
+    line-height: 1.5;
+}
+
+.gform-progress {
+    background: white;
+    border-radius: 0 0 12px 12px;
+    padding: 14px 26px 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
+}
+
+.gform-progress .bar {
+    height: 4px;
+    background: #e5e7eb;
+    border-radius: 99px;
+    overflow: hidden;
+}
+
+.gform-progress .fill {
+    height: 100%;
+    background: #4338CA;
+    transition: width .3s ease;
+    border-radius: 99px;
+}
+
+.gform-progress .count {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 8px;
+}
+
+.gform-q {
+    background: white;
+    border-radius: 12px;
+    padding: 24px 26px;
+    margin-bottom: 14px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
+    border-left: 3px solid transparent;
+    transition: border-color .2s ease;
+}
+
+.gform-q:focus-within {
+    border-left-color: #4338CA;
+}
+
+.gform-q label {
+    display: block;
+    font-size: 15px;
+    font-weight: 500;
+    color: #1f2937;
+    margin-bottom: 12px;
+}
+
+.gform-q label .req {
+    color: #dc2626;
+    margin-left: 2px;
+}
+
+.gform-q input[type=text],
+.gform-q input[type=email],
+.gform-q input[type=date],
+.gform-q textarea {
+    width: 100%;
+    border: none;
+    border-bottom: 1.5px solid #d1d5db;
+    padding: 8px 2px;
+    font-size: 15px;
+    font-family: inherit;
+    background: transparent;
+    transition: border-color .2s;
+}
+
+.gform-q input:focus,
+.gform-q textarea:focus {
+    outline: none;
+    border-bottom-color: #4338CA;
+}
+
+.gform-q textarea {
+    resize: vertical;
+    min-height: 60px;
+}
+
+.gform-file-zone {
+    border: 1.5px dashed #cbd5e1;
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .2s ease;
+    background: #f8fafc;
+    position: relative;
+}
+
+.gform-file-zone:hover {
+    border-color: #4338CA;
+    background: #f0f0fe;
+}
+
+.gform-file-zone.has-file {
+    border-style: solid;
+    border-color: #16a34a;
+    background: #f0fdf4;
+}
+
+.gform-file-zone input[type=file] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+}
+
+.gform-file-zone .icon {
+    font-size: 22px;
+    margin-bottom: 6px;
+}
+
+.gform-file-zone .hint {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 4px;
+}
+
+.gform-file-zone .filename {
+    font-size: 13px;
+    color: #166534;
+    font-weight: 600;
+    word-break: break-all;
+}
+
+.gform-submit-row {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 14px;
+    padding: 8px 4px;
+}
+
+.gform-submit-btn {
+    background: #4338CA;
+    color: white;
+    border: none;
+    padding: 12px 32px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .2s;
+}
+
+.gform-submit-btn:hover {
+    background: #362da3;
+}
+
+.gform-submit-btn:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+.gform-banner {
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin-bottom: 16px;
+    font-size: 14px;
+}
+
+.gform-banner.err {
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+.gform-success {
+    background: white;
+    border-radius: 12px;
+    padding: 50px 30px;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
+}
+
+.gform-success .check {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #dcfce7;
+    color: #16a34a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 18px;
+    font-size: 28px;
+}
+
+.gform-success h2 {
+    margin: 0 0 8px;
+    font-size: 20px;
+    color: #1f2937;
+}
+
+.gform-success p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+@media (max-width: 480px) {
+    .gform-header {
+        padding: 22px 20px;
+    }
+
+    .gform-q {
+        padding: 20px;
+    }
+}

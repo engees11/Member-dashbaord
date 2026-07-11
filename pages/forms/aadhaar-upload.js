@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { uploadDoc, validateFile } from '../../lib/supabaseClient';
 
+const TOTAL_FIELDS = 4;
+
 export default function AadhaarUpload() {
     const router = useRouter();
     const memberId = router.query.id || null;
@@ -10,18 +12,18 @@ export default function AadhaarUpload() {
     const [front, setFront] = useState(null);
     const [back, setBack] = useState(null);
     const [loading, setLoading] = useState(false);
-    const [msg, setMsg] = useState(null);
+    const [err, setErr] = useState('');
     const [done, setDone] = useState(false);
 
     const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+    const filled = [form.email, form.phone, front, back].filter(Boolean).length;
+    const pct = Math.round((filled / TOTAL_FIELDS) * 100);
 
     const submit = async () => {
-        setMsg(null);
-        if (!form.email || !form.phone) {
-            return setMsg({ type: 'err', text: 'Email aur WhatsApp number required hain.' });
-        }
-        const e1 = validateFile(front); if (e1) return setMsg({ type: 'err', text: 'Aadhaar Front: ' + e1 });
-        const e2 = validateFile(back); if (e2) return setMsg({ type: 'err', text: 'Aadhaar Back: ' + e2 });
+        setErr('');
+        if (!form.email || !form.phone) return setErr('Email aur WhatsApp number required hain.');
+        const e1 = validateFile(front); if (e1) return setErr('Aadhaar Front: ' + e1);
+        const e2 = validateFile(back); if (e2) return setErr('Aadhaar Back: ' + e2);
         setLoading(true);
         try {
             const frontUrl = await uploadDoc('aadhaar-front', form.phone, front);
@@ -40,52 +42,82 @@ export default function AadhaarUpload() {
             });
             const data = await res.json();
             if (data.success) setDone(true);
-            else setMsg({ type: 'err', text: data.message || 'Kuch galat ho gaya.' });
-        } catch (err) {
-            setMsg({ type: 'err', text: err.message || 'Network error, dobara try karo.' });
+            else setErr(data.message || 'Kuch galat ho gaya.');
+        } catch (e) {
+            setErr(e.message || 'Network error, dobara try karo.');
         }
         setLoading(false);
     };
 
     if (done) {
         return (
-            <div className="page">
-                <div className="form-card" style={{ textAlign: 'center' }}>
-                    <h1>✅ Thank You!</h1>
-                    <p className="sub">Your details have been submitted successfully.</p>
+            <div className="gform-wrap">
+                <div className="gform-success">
+                    <div className="check">✓</div>
+                    <h2>Your details have been submitted successfully.</h2>
+                    <p>Admin review ke baad aapko status update milega.</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="page">
-            <div className="form-card">
+        <div className="gform-wrap">
+            <div className="gform-header">
                 <h1>Aadhaar Verification</h1>
-                <p className="sub">Apna Aadhaar card upload karke details verify karein.</p>
+                <p>Kripya apna Aadhaar card upload karke details verify karein.</p>
+            </div>
+            <div className="gform-progress">
+                <div className="bar"><div className="fill" style={{ width: pct + '%' }} /></div>
+                <div className="count">{filled} of {TOTAL_FIELDS} completed</div>
+            </div>
 
-                {msg && <div className={`msg ${msg.type === 'ok' ? 'msg-ok' : 'msg-err'}`}>{msg.text}</div>}
+            {err && <div className="gform-banner err">{err}</div>}
 
-                <div className="field">
-                    <label>Email *</label>
-                    <input type="email" value={form.email} onChange={set('email')} placeholder="email@example.com" />
-                </div>
-                <div className="field">
-                    <label>Whatsapp Mobile Number *</label>
-                    <input value={form.phone} onChange={set('phone')} placeholder="91XXXXXXXXXX" />
-                </div>
-                <div className="field">
-                    <label>Upload Aadhaar Card Front Image * (JPG/PNG/WEBP/PDF, max 10MB)</label>
+            <div className="gform-q">
+                <label>Email<span className="req">*</span></label>
+                <input type="email" value={form.email} onChange={set('email')} placeholder="Your answer" />
+            </div>
+
+            <div className="gform-q">
+                <label>Whatsapp Mobile Number<span className="req">*</span></label>
+                <input type="text" value={form.phone} onChange={set('phone')} placeholder="Your answer" />
+            </div>
+
+            <div className="gform-q">
+                <label>Upload your Aadhaar Card Front Image<span className="req">*</span></label>
+                <div className={`gform-file-zone ${front ? 'has-file' : ''}`}>
                     <input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={(e) => setFront(e.target.files[0])} />
-                    {front && <p style={{ fontSize: 13, color: '#16a34a', margin: '6px 0 0' }}>📎 {front.name}</p>}
+                    <div className="icon">{front ? '✅' : '📎'}</div>
+                    {front ? (
+                        <div className="filename">{front.name}</div>
+                    ) : (
+                        <>
+                            <div>Click to upload or drag file</div>
+                            <div className="hint">PDF or image, max 10MB</div>
+                        </>
+                    )}
                 </div>
-                <div className="field">
-                    <label>Upload Aadhaar Card Back Image * (JPG/PNG/WEBP/PDF, max 10MB)</label>
-                    <input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={(e) => setBack(e.target.files[0])} />
-                    {back && <p style={{ fontSize: 13, color: '#16a34a', margin: '6px 0 0' }}>📎 {back.name}</p>}
-                </div>
+            </div>
 
-                <button className="btn btn-blue submit-btn" onClick={submit} disabled={loading}>
+            <div className="gform-q">
+                <label>Upload your Aadhaar Card Back Image<span className="req">*</span></label>
+                <div className={`gform-file-zone ${back ? 'has-file' : ''}`}>
+                    <input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={(e) => setBack(e.target.files[0])} />
+                    <div className="icon">{back ? '✅' : '📎'}</div>
+                    {back ? (
+                        <div className="filename">{back.name}</div>
+                    ) : (
+                        <>
+                            <div>Click to upload or drag file</div>
+                            <div className="hint">PDF or image, max 10MB</div>
+                        </>
+                    )}
+                </div>
+            </div>
+
+            <div className="gform-submit-row">
+                <button className="gform-submit-btn" onClick={submit} disabled={loading}>
                     {loading ? 'Uploading...' : 'Submit'}
                 </button>
             </div>
