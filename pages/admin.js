@@ -10,7 +10,7 @@ export default function Admin() {
     const router = useRouter();
     const [members, setMembers] = useState([]);
     const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, rejected: 0, expired: 0 });
-    const [filter, setFilter] = useState(null);
+    const [filter, setFilter] = useState(undefined); // undefined = koi card select nahi hui abhi
     const [search, setSearch] = useState('');
     const [selected, setSelected] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -45,7 +45,7 @@ export default function Admin() {
     const logout = () => { localStorage.removeItem('admin_token'); router.push('/'); };
 
     const filtered = members.filter((m) => {
-        if (filter && m.status !== filter) return false;
+        if (filter && filter !== 'all' && m.status !== filter) return false;
         if (search) {
             const q = search.toLowerCase();
             return (
@@ -67,7 +67,7 @@ export default function Admin() {
             </div>
 
             <div className="stats-row">
-                <StatCard title="Total Members" value={stats.total} variant="total" active={filter === null} onClick={() => setFilter(null)} />
+                <StatCard title="Total Members" value={stats.total} variant="total" active={filter === 'all'} onClick={() => setFilter(filter === 'all' ? undefined : 'all')} />
                 <StatCard title="Pending" value={stats.pending} variant="pending" active={filter === 'pending'} onClick={() => toggleFilter('pending')} />
                 <StatCard title="Approved" value={stats.approved} variant="approved" active={filter === 'approved'} onClick={() => toggleFilter('approved')} />
                 <StatCard title="Rejected" value={stats.rejected} variant="rejected" active={filter === 'rejected'} onClick={() => toggleFilter('rejected')} />
@@ -106,38 +106,46 @@ export default function Admin() {
                 </div>
             )}
 
-            <div className="table-card">
-                <div className="table-head">
-                    <div><h3>Members {filter ? `— ${LABELS[filter]}` : ''}</h3><p>{filtered.length} records</p></div>
-                    <input className="searchbar" placeholder="Search name / whatsapp / email" value={search} onChange={(e) => setSearch(e.target.value)} />
+            {filter === undefined ? (
+                <div className="table-card">
+                    <div className="empty" style={{ padding: 60 }}>
+                        Koi bhi status card pe click karo members dekhne ke liye 👆
+                    </div>
                 </div>
-                <div className="table-wrap">
-                    <table>
-                        <thead>
-                            <tr><th>Name</th><th>WhatsApp Number</th><th>Email</th><th>Form Type</th><th>Submitted Date</th><th>Status</th><th>Actions</th></tr>
-                        </thead>
-                        <tbody>
-                            {loading ? (
-                                <tr><td colSpan={7} className="empty">Loading...</td></tr>
-                            ) : filtered.length === 0 ? (
-                                <tr><td colSpan={7} className="empty">No records found.</td></tr>
-                            ) : (
-                                filtered.map((m) => (
-                                    <tr key={m.id}>
-                                        <td>{fullName(m) || '-'}</td>
-                                        <td>{m.whatsapp_number || '-'}</td>
-                                        <td>{m.email || '-'}</td>
-                                        <td>{FORM_TYPE_LABELS[m.form_type] || m.form_type || '-'}</td>
-                                        <td>{m.submitted_at ? new Date(m.submitted_at).toLocaleDateString() : (m.created_at ? new Date(m.created_at).toLocaleDateString() : '-')}</td>
-                                        <td><span className={`badge b-${m.status}`}>{LABELS[m.status] || m.status}</span></td>
-                                        <td><button className="btn btn-blue btn-sm" onClick={() => setSelected(m)}>View</button></td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
+            ) : (
+                <div className="table-card">
+                    <div className="table-head">
+                        <div><h3>Members {filter !== 'all' ? `— ${LABELS[filter]}` : ''}</h3><p>{filtered.length} records</p></div>
+                        <input className="searchbar" placeholder="Search name / whatsapp / email" value={search} onChange={(e) => setSearch(e.target.value)} />
+                    </div>
+                    <div className="table-wrap">
+                        <table>
+                            <thead>
+                                <tr><th>Name</th><th>WhatsApp Number</th><th>Email</th><th>Form Type</th><th>Submitted Date</th><th>Status</th><th>Actions</th></tr>
+                            </thead>
+                            <tbody>
+                                {loading ? (
+                                    <tr><td colSpan={7} className="empty">Loading...</td></tr>
+                                ) : filtered.length === 0 ? (
+                                    <tr><td colSpan={7} className="empty">No records found.</td></tr>
+                                ) : (
+                                    filtered.map((m) => (
+                                        <tr key={m.id}>
+                                            <td>{fullName(m) || '-'}</td>
+                                            <td>{m.whatsapp_number || '-'}</td>
+                                            <td>{m.email || '-'}</td>
+                                            <td>{FORM_TYPE_LABELS[m.form_type] || m.form_type || '-'}</td>
+                                            <td>{m.submitted_at ? new Date(m.submitted_at).toLocaleDateString() : (m.created_at ? new Date(m.created_at).toLocaleDateString() : '-')}</td>
+                                            <td><span className={`badge b-${m.status}`}>{LABELS[m.status] || m.status}</span></td>
+                                            <td><button className="btn btn-blue btn-sm" onClick={() => setSelected(m)}>View</button></td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 }
