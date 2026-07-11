@@ -29,7 +29,7 @@ export default function UpdateDetails() {
         setErr('');
         const required = ['first_name', 'father_name', 'last_name', 'phone', 'dob', 'native_place', 'address', 'area'];
         for (const k of required) {
-            if (!form[k]) return setErr('Sari * wali fields required hain.');
+            if (!form[k]) return setErr('All fields marked with * are required.');
         }
         const e1 = validateFile(front); if (e1) return setErr('Aadhaar Front: ' + e1);
         const e2 = validateFile(back); if (e2) return setErr('Aadhaar Back: ' + e2);
@@ -58,9 +58,9 @@ export default function UpdateDetails() {
             });
             const data = await res.json();
             if (data.success) setDone(true);
-            else setErr(data.message || 'Kuch galat ho gaya.');
+            else setErr(data.message || 'Something went wrong. Please try again.');
         } catch (e) {
-            setErr(e.message || 'Network error, dobara try karo.');
+            setErr(e.message || 'Network error, please try again.');
         }
         setLoading(false);
     };
@@ -71,7 +71,7 @@ export default function UpdateDetails() {
                 <div className="gform-success">
                     <div className="check">✓</div>
                     <h2>Your details have been submitted successfully.</h2>
-                    <p>Admin review ke baad aapko status update milega.</p>
+                    <p>You will be notified once the admin reviews your submission.</p>
                 </div>
             </div>
         );
@@ -81,7 +81,7 @@ export default function UpdateDetails() {
         <div className="gform-wrap">
             <div className="gform-header">
                 <h1>Update Your Details</h1>
-                <p>Apni sahi details bharein aur Aadhaar upload karein.</p>
+                <p>Please fill in your correct details and upload your Aadhaar card.</p>
             </div>
             <div className="gform-progress">
                 <div className="bar"><div className="fill" style={{ width: pct + '%' }} /></div>

@@ -25,7 +25,7 @@ export default function Home() {
                 setErr(data.message || 'Login failed');
             }
         } catch {
-            setErr('Network error, dobara try karo.');
+            setErr('Network error, please try again.');
         }
         setLoading(false);
     };
@@ -34,7 +34,7 @@ export default function Home() {
         <div className="login-page">
             <div className="login-box">
                 <h1>Admin Login</h1>
-                <p>TYP Surat Member Verification System</p>
+                <p>Member Verification System</p>
                 {err && <div className="msg msg-err">{err}</div>}
                 <input
                     type="email"

@@ -21,7 +21,7 @@ export default function AadhaarUpload() {
 
     const submit = async () => {
         setErr('');
-        if (!form.email || !form.phone) return setErr('Email aur WhatsApp number required hain.');
+        if (!form.email || !form.phone) return setErr('Email and WhatsApp number are required.');
         const e1 = validateFile(front); if (e1) return setErr('Aadhaar Front: ' + e1);
         const e2 = validateFile(back); if (e2) return setErr('Aadhaar Back: ' + e2);
         setLoading(true);
@@ -42,9 +42,9 @@ export default function AadhaarUpload() {
             });
             const data = await res.json();
             if (data.success) setDone(true);
-            else setErr(data.message || 'Kuch galat ho gaya.');
+            else setErr(data.message || 'Something went wrong. Please try again.');
         } catch (e) {
-            setErr(e.message || 'Network error, dobara try karo.');
+            setErr(e.message || 'Network error, please try again.');
         }
         setLoading(false);
     };
@@ -55,7 +55,7 @@ export default function AadhaarUpload() {
                 <div className="gform-success">
                     <div className="check">✓</div>
                     <h2>Your details have been submitted successfully.</h2>
-                    <p>Admin review ke baad aapko status update milega.</p>
+                    <p>You will be notified once the admin reviews your submission.</p>
                 </div>
             </div>
         );
@@ -65,7 +65,7 @@ export default function AadhaarUpload() {
         <div className="gform-wrap">
             <div className="gform-header">
                 <h1>Aadhaar Verification</h1>
-                <p>Kripya apna Aadhaar card upload karke details verify karein.</p>
+                <p>Please upload your Aadhaar card to verify your details.</p>
             </div>
             <div className="gform-progress">
                 <div className="bar"><div className="fill" style={{ width: pct + '%' }} /></div>
