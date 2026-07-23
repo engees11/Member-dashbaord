@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 
 const LABELS = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected', expired: 'Expired' };
 const fullName = (m) => [m.first_name, m.father_name, m.last_name].filter(Boolean).join(' ');
-const rowType = (m) => (m.first_name ? 'details_update' : 'aadhaar_update');
+const rowType = (m) => m.form_type || 'not_submitted';
 
 export default function MembersList() {
     const router = useRouter();
@@ -92,6 +92,7 @@ export default function MembersList() {
 
     const aadhaarCount = byStatus.filter((m) => rowType(m) === 'aadhaar_update').length;
     const detailsCount = byStatus.filter((m) => rowType(m) === 'details_update').length;
+    const notSubmittedCount = byStatus.filter((m) => rowType(m) === 'not_submitted').length;
 
     return (
         <div className="page">
@@ -148,7 +149,7 @@ export default function MembersList() {
             <div className="table-card">
                 <div className="table-head" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 14 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-                        <div style={{ display: 'flex', gap: 8 }}>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                             <button
                                 className={tab === 'aadhaar_update' ? 'btn btn-blue btn-sm' : 'btn btn-gray btn-sm'}
                                 onClick={() => setTab('aadhaar_update')}
@@ -161,6 +162,12 @@ export default function MembersList() {
                             >
                                 Details Update ({detailsCount})
                             </button>
+                            <button
+                                className={tab === 'not_submitted' ? 'btn btn-blue btn-sm' : 'btn btn-gray btn-sm'}
+                                onClick={() => setTab('not_submitted')}
+                            >
+                                Not Submitted ({notSubmittedCount})
+                            </button>
                         </div>
                         <input className="searchbar" placeholder="Search name / whatsapp / email" value={search} onChange={(e) => setSearch(e.target.value)} />
                     </div>
@@ -168,24 +175,21 @@ export default function MembersList() {
                 </div>
 
                 <div className="table-wrap">
-                    {tab === 'aadhaar_update' ? (
+                    {tab === 'aadhaar_update' && (
                         <table>
                             <thead>
-                                <tr><th>Name</th><th>Email</th><th>WhatsApp number</th><th>Area</th><th>Aadhaar number</th><th>Submitted date</th><th>Status</th><th>Actions</th></tr>
+                                <tr><th>Email</th><th>WhatsApp number</th><th>Submitted date</th><th>Status</th><th>Actions</th></tr>
                             </thead>
                             <tbody>
                                 {loading ? (
-                                    <tr><td colSpan={8} className="empty">Loading...</td></tr>
+                                    <tr><td colSpan={5} className="empty">Loading...</td></tr>
                                 ) : filtered.length === 0 ? (
-                                    <tr><td colSpan={8} className="empty">No records found.</td></tr>
+                                    <tr><td colSpan={5} className="empty">No records found.</td></tr>
                                 ) : (
                                     filtered.map((m) => (
                                         <tr key={m.id}>
-                                            <td>{fullName(m) || '-'}</td>
                                             <td>{m.email || '-'}</td>
                                             <td>{m.whatsapp_number || '-'}</td>
-                                            <td>{m.area || '-'}</td>
-                                            <td>{m.aadhaar_number || '-'}</td>
                                             <td>{m.submitted_at ? new Date(m.submitted_at).toLocaleDateString() : (m.created_at ? new Date(m.created_at).toLocaleDateString() : '-')}</td>
                                             <td><span className={`badge b-${m.status}`}>{LABELS[m.status] || m.status}</span></td>
                                             <td><button className="btn btn-blue btn-sm" onClick={() => setSelected(m)}>View</button></td>
@@ -194,7 +198,9 @@ export default function MembersList() {
                                 )}
                             </tbody>
                         </table>
-                    ) : (
+                    )}
+
+                    {tab === 'details_update' && (
                         <table>
                             <thead>
                                 <tr><th>Name</th><th>WhatsApp number</th><th>Email</th><th>Birth date</th><th>Area</th><th>Aadhaar number</th><th>Submitted date</th><th>Status</th><th>Actions</th></tr>
@@ -214,6 +220,33 @@ export default function MembersList() {
                                             <td>{m.area || '-'}</td>
                                             <td>{m.aadhaar_number || '-'}</td>
                                             <td>{m.submitted_at ? new Date(m.submitted_at).toLocaleDateString() : (m.created_at ? new Date(m.created_at).toLocaleDateString() : '-')}</td>
+                                            <td><span className={`badge b-${m.status}`}>{LABELS[m.status] || m.status}</span></td>
+                                            <td><button className="btn btn-blue btn-sm" onClick={() => setSelected(m)}>View</button></td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    )}
+
+                    {tab === 'not_submitted' && (
+                        <table>
+                            <thead>
+                                <tr><th>Name</th><th>WhatsApp number</th><th>Native place</th><th>Area</th><th>Aadhaar number</th><th>Status</th><th>Actions</th></tr>
+                            </thead>
+                            <tbody>
+                                {loading ? (
+                                    <tr><td colSpan={7} className="empty">Loading...</td></tr>
+                                ) : filtered.length === 0 ? (
+                                    <tr><td colSpan={7} className="empty">No records found.</td></tr>
+                                ) : (
+                                    filtered.map((m) => (
+                                        <tr key={m.id}>
+                                            <td>{fullName(m) || '-'}</td>
+                                            <td>{m.whatsapp_number || '-'}</td>
+                                            <td>{m.native_place || '-'}</td>
+                                            <td>{m.area || '-'}</td>
+                                            <td>{m.aadhaar_number || '-'}</td>
                                             <td><span className={`badge b-${m.status}`}>{LABELS[m.status] || m.status}</span></td>
                                             <td><button className="btn btn-blue btn-sm" onClick={() => setSelected(m)}>View</button></td>
                                         </tr>

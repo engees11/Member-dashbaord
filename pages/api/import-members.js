@@ -81,13 +81,32 @@ export default async function handler(req, res) {
         let upserted = 0;
         for (let i = 0; i < records.length; i += BATCH_SIZE) {
             const batch = records.slice(i, i + BATCH_SIZE);
+            const phones = batch.map((r) => r.whatsapp_number);
+
+            const { data: existingRows } = await supabase
+                .from('members')
+                .select('whatsapp_number, form_type')
+                .in('whatsapp_number', phones);
+
+            const existingMap = {};
+            (existingRows || []).forEach((r) => { existingMap[r.whatsapp_number] = r.form_type; });
+
+            const adjustedBatch = batch.map((r) => {
+                const existingType = existingMap[r.whatsapp_number];
+                if (existingType === 'details_update' && r.form_type === 'aadhaar_update') {
+                    const { form_type, ...rest } = r;
+                    return rest;
+                }
+                return r;
+            });
+
             const { error } = await supabase
                 .from('members')
-                .upsert(batch, { onConflict: 'whatsapp_number' });
+                .upsert(adjustedBatch, { onConflict: 'whatsapp_number' });
             if (error) {
                 errors.push(`Batch starting row ${i + 1}: ${error.message}`);
             } else {
-                upserted += batch.length;
+                upserted += adjustedBatch.length;
             }
         }
 
