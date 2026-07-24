@@ -177,6 +177,20 @@ export default function UpdateDetails() {
                 </div>
             </div>
 
+            <div style={{ textAlign: 'center', margin: '24px 0' }}>
+                <p style={{ fontSize: 14, color: '#475569', marginBottom: 10, fontWeight: 600 }}>
+                    Support us — Scan & Pay
+                </p>
+                <img
+                    src="/donation-qr.png"
+                    alt="Scan and Pay QR - M S Terapanth Yuvak Parishad"
+                    style={{ maxWidth: 220, width: '100%', borderRadius: 12, border: '1px solid #e2e8f0' }}
+                />
+                <p style={{ fontSize: 13, color: '#64748b', marginTop: 8 }}>
+                    UPI ID: terapanthb089y@indianbnk
+                </p>
+            </div>
+
             <div className="gform-submit-row">
                 <button className="gform-submit-btn" onClick={submit} disabled={loading}>
                     {loading ? 'Uploading...' : 'Submit'}
