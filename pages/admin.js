@@ -4,7 +4,7 @@ import StatCard from '../components/StatCard';
 
 export default function Admin() {
     const router = useRouter();
-    const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, rejected: 0, expired: 0 });
+    const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, rejected: 0, expired: 0, new: 0, needReview: 0 });
     const [loading, setLoading] = useState(true);
     const [importing, setImporting] = useState(false);
     const [importResult, setImportResult] = useState(null);
@@ -97,6 +97,8 @@ export default function Admin() {
                 <StatCard title="Approved" value={loading ? '-' : stats.approved} variant="approved" onClick={() => goTo('approved')} />
                 <StatCard title="Rejected" value={loading ? '-' : stats.rejected} variant="rejected" onClick={() => goTo('rejected')} />
                 <StatCard title="Expired" value={loading ? '-' : stats.expired} variant="expired" onClick={() => goTo('expired')} />
+                <StatCard title="New" value={loading ? '-' : stats.new} variant="new" onClick={() => goTo('new')} />
+                <StatCard title="Need Review" value={loading ? '-' : stats.needReview} variant="needreview" onClick={() => goTo('need_review')} />
             </div>
 
             <div className="table-card">

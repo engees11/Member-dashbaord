@@ -29,6 +29,8 @@ export default async function handler(req, res) {
         approved: members.filter((m) => m.status === 'approved').length,
         rejected: members.filter((m) => m.status === 'rejected').length,
         expired: members.filter((m) => m.status === 'expired').length,
+        new: members.filter((m) => m.status === 'new').length,
+        needReview: members.filter((m) => m.status === 'need_review').length,
     };
 
     return res.json({ success: true, members, stats });

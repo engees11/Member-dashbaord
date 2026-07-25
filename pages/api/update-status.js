@@ -9,7 +9,7 @@ export default async function handler(req, res) {
 
     const { id, status } = req.body || {};
     if (!id) return res.status(400).json({ success: false, message: 'Member id is required' });
-    if (!['pending', 'approved', 'rejected', 'expired'].includes(status)) {
+    if (!['pending', 'approved', 'rejected', 'expired', 'new', 'need_review'].includes(status)) {
         return res.status(400).json({ success: false, message: 'Invalid status value: ' + status });
     }
 

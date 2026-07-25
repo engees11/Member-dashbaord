@@ -653,3 +653,21 @@ tr:hover td {
         padding: 20px;
     }
 }
+
+.b-new {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.b-need_review {
+    background: #fce7f3;
+    color: #9d174d;
+}
+
+.stat-new {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+.stat-needreview {
+    background: linear-gradient(135deg, #db2777, #9d174d);
+}

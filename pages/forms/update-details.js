@@ -14,6 +14,7 @@ export default function UpdateDetails() {
     });
     const [front, setFront] = useState(null);
     const [back, setBack] = useState(null);
+    const [payment, setPayment] = useState(null);
     const [loading, setLoading] = useState(false);
     const [err, setErr] = useState('');
     const [done, setDone] = useState(false);
@@ -37,10 +38,14 @@ export default function UpdateDetails() {
         if (phoneDigits.length < 10 || phoneDigits.length > 13) return setErr('Please enter a valid WhatsApp number (10-13 digits).');
         const e1 = validateFile(front); if (e1) return setErr('Aadhaar Front: ' + e1);
         const e2 = validateFile(back); if (e2) return setErr('Aadhaar Back: ' + e2);
+        if (payment) {
+            const e3 = validateFile(payment); if (e3) return setErr('Payment Proof: ' + e3);
+        }
         setLoading(true);
         try {
             const frontUrl = await uploadDoc('aadhaar-front', form.phone, front);
             const backUrl = await uploadDoc('aadhaar-back', form.phone, back);
+            const paymentUrl = payment ? await uploadDoc('payment-proof', form.phone, payment) : '';
             const res = await fetch('/api/submit-form', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -59,6 +64,7 @@ export default function UpdateDetails() {
                     aadhaar_number: form.aadhaar_number,
                     aadhaar_front_url: frontUrl,
                     aadhaar_back_url: backUrl,
+                    payment_proof_url: paymentUrl,
                 }),
             });
             const data = await res.json();
@@ -189,6 +195,22 @@ export default function UpdateDetails() {
                 <p style={{ fontSize: 13, color: '#64748b', marginTop: 8 }}>
                     UPI ID: terapanthb089y@indianbnk
                 </p>
+            </div>
+
+            <div className="gform-q">
+                <label>Upload Payment Screenshot / Receipt (optional)</label>
+                <div className={`gform-file-zone ${payment ? 'has-file' : ''}`}>
+                    <input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={(e) => setPayment(e.target.files[0])} />
+                    <div className="icon">{payment ? '✅' : '📎'}</div>
+                    {payment ? (
+                        <div className="filename">{payment.name}</div>
+                    ) : (
+                        <>
+                            <div>Click to upload or drag file</div>
+                            <div className="hint">PDF or image, max 10MB</div>
+                        </>
+                    )}
+                </div>
             </div>
 
             <div className="gform-submit-row">
