@@ -13,6 +13,7 @@ export default async function handler(req, res) {
             .from('members')
             .select('*')
             .order('created_at', { ascending: false })
+            .order('id', { ascending: true })
             .range(from, from + pageSize - 1);
 
         if (error) return res.json({ success: false, message: error.message });
