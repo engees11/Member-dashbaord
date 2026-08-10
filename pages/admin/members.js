@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 
-const LABELS = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected', expired: 'Expired' };
+const LABELS = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected', expired: 'Expired', new: 'New', need_review: 'Need Review' };
 const fullName = (m) => [m.first_name, m.father_name, m.last_name].filter(Boolean).join(' ');
 const rowType = (m) => m.form_type || 'not_submitted';
 
@@ -138,6 +138,7 @@ export default function MembersList() {
                         <button className="btn btn-green" disabled={selected.status === 'approved'} onClick={() => updateStatus(selected.id, 'approved')}>Approve</button>
                         <button className="btn btn-red" disabled={selected.status === 'rejected'} onClick={() => updateStatus(selected.id, 'rejected')}>Reject</button>
                         <button className="btn btn-gray" disabled={selected.status === 'expired'} onClick={() => updateStatus(selected.id, 'expired')}>Mark expired</button>
+                        <button className="btn btn-gray" disabled={selected.status === 'need_review'} onClick={() => updateStatus(selected.id, 'need_review')}>Need Review</button>
                         {selected.status !== 'pending' && (
                             <button className="btn btn-gray" onClick={() => updateStatus(selected.id, 'pending')}>Mark pending</button>
                         )}

@@ -12,7 +12,7 @@ export default function Admin() {
     const token = () => localStorage.getItem('admin_token');
 
     const fetchStats = async () => {
-        const res = await fetch('/api/members', { headers: { Authorization: `Bearer ${token()}` } });
+        const res = await fetch('/api/stats', { headers: { Authorization: `Bearer ${token()}` } });
         if (res.status === 401) return router.push('/');
         const data = await res.json();
         if (data.success) setStats(data.stats);
