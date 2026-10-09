@@ -1,12 +1,42 @@
-import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
+import { supabase } from '../../lib/supabase';
+import { signToken } from '../../lib/auth';
+import { logActivity } from '../../lib/activity';
 
-export default function handler(req, res) {
+export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).end();
-    const { email, password } = req.body || {};
-
-    if (email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
-        const token = jwt.sign({ role: 'admin', email }, process.env.JWT_SECRET, { expiresIn: '7d' });
-        return res.json({ success: true, token });
+    const email = String((req.body || {}).email || '').trim().toLowerCase();
+    const password = String((req.body || {}).password || '');
+    if (!email || !password) {
+        return res.status(400).json({ success: false, message: 'Email aur password dono daalo' });
     }
-    return res.status(401).json({ success: false, message: 'Galat email ya password' });
+
+    // 1) Main admin (.env wala login, pehle jaisa)
+    if (email === String(process.env.ADMIN_EMAIL || '').toLowerCase() && password === process.env.ADMIN_PASSWORD) {
+        const user = { role: 'admin', name: 'Admin', email };
+        return res.json({ success: true, token: signToken(user), user });
+    }
+
+    // 2) Team member
+    try {
+        const { data: tm } = await supabase
+            .from('team_members')
+            .select('id, name, email, password_hash, is_active')
+            .eq('email', email)
+            .maybeSingle();
+
+        // members added with an OTP login have no password at all, so there is nothing to compare
+        const ok = tm && tm.password_hash && (await bcrypt.compare(password, tm.password_hash));
+        if (!ok) return res.status(401).json({ success: false, message: 'Galat email ya password' });
+        if (!tm.is_active) {
+            return res.status(403).json({ success: false, message: 'Aapka account band hai. Admin se baat karein.' });
+        }
+
+        const user = { role: 'member', id: tm.id, name: tm.name, email: tm.email };
+        await supabase.from('team_members').update({ last_login_at: new Date().toISOString() }).eq('id', tm.id);
+        await logActivity(user, 'login');
+        return res.json({ success: true, token: signToken(user), user });
+    } catch (e) {
+        return res.status(500).json({ success: false, message: 'Server error: ' + e.message });
+    }
 }

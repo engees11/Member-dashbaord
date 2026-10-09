@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import { getUser, clearSession } from '../../lib/session';
+import StatusTimeline from '../../components/StatusTimeline';
 
 const LABELS = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected', expired: 'Expired', new: 'New', need_review: 'Need Review' };
 const fullName = (m) => [m.first_name, m.father_name, m.last_name].filter(Boolean).join(' ');
@@ -22,7 +24,7 @@ export default function MembersList() {
         setLoading(true);
         try {
             const res = await fetch('/api/members', { headers: { Authorization: `Bearer ${token()}` } });
-            if (res.status === 401) return router.push('/');
+            if (res.status === 401) { clearSession(); return router.push('/'); }
             const data = await res.json();
             if (data.success) setMembers(data.members);
         } catch {
@@ -36,14 +38,21 @@ export default function MembersList() {
         fetchData();
     }, []);
 
+    const isAdmin = () => (getUser() || { role: 'admin' }).role === 'admin';
+
     const updateStatus = async (id, newStatus) => {
-        if (newStatus === 'rejected' && !confirm('Are you sure you want to reject this member?')) return;
+        let note = '';
+        if (newStatus === 'rejected' || newStatus === 'need_review') {
+            const reply = prompt(newStatus === 'rejected' ? 'Reject kyun kar rahe ho? (optional)' : 'Review ki wajah? (optional)', '');
+            if (reply === null) return;
+            note = reply.trim();
+        }
         setActionMsg('');
         try {
             const res = await fetch('/api/update-status', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
-                body: JSON.stringify({ id, status: newStatus }),
+                body: JSON.stringify({ id, status: newStatus, note }),
             });
             const data = await res.json();
             if (data.success) {
@@ -130,9 +139,12 @@ export default function MembersList() {
                         <div className="item"><b>Email</b>{selected.email || '-'}</div>
                         <div className="item"><b>WhatsApp number</b>{selected.whatsapp_number || '-'}</div>
                         <div className="item"><b>Aadhaar number</b>{selected.aadhaar_number || '-'}</div>
-                        <div className="item"><b>Status</b><span className={`badge b-${selected.status}`}>{LABELS[selected.status] || selected.status}</span></div>
                         <div className="item"><b>Aadhaar front</b>{selected.aadhaar_front_url ? <a href={selected.aadhaar_front_url} target="_blank" rel="noreferrer">View image</a> : 'Not uploaded'}</div>
                         <div className="item"><b>Aadhaar back</b>{selected.aadhaar_back_url ? <a href={selected.aadhaar_back_url} target="_blank" rel="noreferrer">View image</a> : 'Not uploaded'}</div>
+                    </div>
+                    <div className="tl-wrap">
+                        <b className="tl-heading">Status timeline</b>
+                        <StatusTimeline memberId={selected.id} status={selected.status} />
                     </div>
                     <div style={{ padding: '0 26px 24px', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                         <button className="btn btn-green" disabled={selected.status === 'approved'} onClick={() => updateStatus(selected.id, 'approved')}>Approve</button>
@@ -142,7 +154,9 @@ export default function MembersList() {
                         {selected.status !== 'pending' && (
                             <button className="btn btn-gray" onClick={() => updateStatus(selected.id, 'pending')}>Mark pending</button>
                         )}
-                        <button className="btn btn-red" onClick={() => deleteMember(selected.id)} style={{ marginLeft: 'auto' }}>Delete member</button>
+                        {isAdmin() && (
+                            <button className="btn btn-red" onClick={() => deleteMember(selected.id)} style={{ marginLeft: 'auto' }}>Delete member</button>
+                        )}
                     </div>
                 </div>
             )}

@@ -1,0 +1,56 @@
+import { useState } from 'react';
+import { useRouter } from 'next/router';
+import { saveSession } from '../lib/session';
+
+// Emergency login for the admin if WhatsApp OTP is not working.
+// It is not linked from anywhere. To switch it off for good, remove ADMIN_PASSWORD from .env / Vercel.
+export default function AdminLogin() {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [err, setErr] = useState('');
+    const [loading, setLoading] = useState(false);
+    const router = useRouter();
+
+    const handleLogin = async () => {
+        setErr('');
+        setLoading(true);
+        try {
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                saveSession(data.token, data.user);
+                router.push('/admin');
+            } else {
+                setErr(data.message || 'Login failed');
+            }
+        } catch {
+            setErr('Network error, please try again.');
+        }
+        setLoading(false);
+    };
+
+    return (
+        <div className="login-page">
+            <div className="login-box">
+                <h1>Admin login</h1>
+                <p>Emergency access</p>
+                {err && <div className="msg msg-err">{err}</div>}
+                <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <input
+                    type="password"
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                />
+                <button className="btn btn-blue submit-btn" onClick={handleLogin} disabled={loading}>
+                    {loading ? 'Logging in...' : 'Login'}
+                </button>
+            </div>
+        </div>
+    );
+}

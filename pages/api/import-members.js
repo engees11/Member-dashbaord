@@ -1,5 +1,6 @@
 import { supabase } from '../../lib/supabase';
-import { verifyAdmin } from '../../lib/auth';
+import { requireUser, isAdmin } from '../../lib/auth';
+import { logActivity } from '../../lib/activity';
 
 export const config = { api: { bodyParser: { sizeLimit: '8mb' } } };
 
@@ -36,8 +37,9 @@ const BATCH_SIZE = 300;
 export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ success: false, message: 'Method not allowed' });
 
-    const admin = verifyAdmin(req);
-    if (!admin) return res.status(401).json({ success: false, message: 'Unauthorized' });
+    const user = await requireUser(req);
+    if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
+    if (!isAdmin(user)) return res.status(403).json({ success: false, message: 'Sirf admin CSV import kar sakta hai' });
 
     try {
         const { csv } = req.body || {};
@@ -109,6 +111,8 @@ export default async function handler(req, res) {
                 upserted += adjustedBatch.length;
             }
         }
+
+        await logActivity(user, 'import', { meta: { total: rows.length, upserted, skipped } });
 
         return res.json({
             success: true,

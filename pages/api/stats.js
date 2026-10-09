@@ -1,5 +1,5 @@
 import { supabase } from '../../lib/supabase';
-import { verifyAdmin } from '../../lib/auth';
+import { requireUser } from '../../lib/auth';
 
 async function countWhere(column, value) {
     let query = supabase.from('members').select('*', { count: 'exact', head: true });
@@ -14,7 +14,7 @@ async function countWhere(column, value) {
 }
 
 export default async function handler(req, res) {
-    if (!verifyAdmin(req)) return res.status(401).json({ success: false });
+    if (!(await requireUser(req))) return res.status(401).json({ success: false });
 
     try {
         const { count: total } = await supabase.from('members').select('*', { count: 'exact', head: true });

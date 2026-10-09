@@ -1,11 +1,12 @@
 import { supabase } from '../../lib/supabase';
-import { verifyAdmin } from '../../lib/auth';
+import { requireUser } from '../../lib/auth';
+import { logActivity, memberLabel } from '../../lib/activity';
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ success: false, message: 'Method not allowed' });
 
-    const admin = verifyAdmin(req);
-    if (!admin) return res.status(401).json({ success: false, message: 'Unauthorized' });
+    const user = await requireUser(req);
+    if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
 
     try {
         const body = req.body || {};
@@ -34,8 +35,10 @@ export default async function handler(req, res) {
             return res.status(409).json({ success: false, message: 'A member with this WhatsApp number already exists.' });
         }
 
-        const { error } = await supabase.from('members').insert(record);
+        const { data: created, error } = await supabase.from('members').insert(record).select('id').maybeSingle();
         if (error) return res.status(500).json({ success: false, message: error.message });
+
+        await logActivity(user, 'member_create', { memberId: created && created.id, memberLabel: memberLabel(record), newStatus: 'new' });
 
         return res.json({ success: true });
     } catch (e) {

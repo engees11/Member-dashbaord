@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase';
+import { logActivity, memberLabel } from '../../lib/activity';
 
 export const config = { api: { bodyParser: { sizeLimit: '8mb' } } };
 
@@ -22,12 +23,21 @@ export default async function handler(req, res) {
         }
 
         let error;
+        let savedId = existing ? existing.id : null;
         if (existing) {
             ({ error } = await supabase.from('members').update(fields).eq('id', existing.id));
         } else {
-            ({ error } = await supabase.from('members').insert(fields));
+            const ins = await supabase.from('members').insert(fields).select('id').maybeSingle();
+            error = ins.error;
+            savedId = ins.data ? ins.data.id : null;
         }
         if (error) return res.json({ success: false, message: error.message });
+
+        await logActivity({ role: 'public', name: 'Member (form)' }, 'form_submit', {
+            memberId: savedId,
+            memberLabel: memberLabel(fields),
+            newStatus: 'new',
+        });
 
         return res.json({ success: true });
     } catch (e) {

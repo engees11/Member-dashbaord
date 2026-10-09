@@ -1,35 +1,72 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import Head from 'next/head';
 import StatCard from '../components/StatCard';
+import TeamSidebar from '../components/TeamSidebar';
+import AddMemberModal from '../components/AddMemberModal';
+import NotificationBell from '../components/NotificationBell';
+import { authFetch, clearSession, getToken, getUser } from '../lib/session';
+import {
+    IconUsers, IconClock, IconCheck, IconX, IconHourglass, IconFile, IconStar,
+    IconGrid, IconUpload, IconUserPlus, IconLogout,
+} from '../components/Icons';
+
+const CARDS = [
+    { key: 'total', status: 'all', title: 'Total Members', variant: 'total', Icon: IconUsers },
+    { key: 'pending', status: 'pending', title: 'Pending', variant: 'pending', Icon: IconClock },
+    { key: 'approved', status: 'approved', title: 'Approved', variant: 'approved', Icon: IconCheck },
+    { key: 'rejected', status: 'rejected', title: 'Rejected', variant: 'rejected', Icon: IconX },
+    { key: 'expired', status: 'expired', title: 'Expired', variant: 'expired', Icon: IconHourglass },
+    { key: 'new', status: 'new', title: 'New', variant: 'new', Icon: IconFile },
+    { key: 'needReview', status: 'need_review', title: 'Need Review', variant: 'review', Icon: IconStar },
+];
 
 export default function Admin() {
     const router = useRouter();
-    const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, rejected: 0, expired: 0, new: 0, needReview: 0 });
-    const [loading, setLoading] = useState(true);
+    const [user, setUser] = useState(null);
+    const [stats, setStats] = useState(null);
+    const [team, setTeam] = useState([]);
+    const [teamLoading, setTeamLoading] = useState(true);
     const [importing, setImporting] = useState(false);
     const [importResult, setImportResult] = useState(null);
+    const [addOpen, setAddOpen] = useState(false);
 
-    const token = () => localStorage.getItem('admin_token');
+    const admin = user && user.role === 'admin';
 
     const fetchStats = async () => {
-        const res = await fetch('/api/stats', { headers: { Authorization: `Bearer ${token()}` } });
-        if (res.status === 401) return router.push('/');
-        const data = await res.json();
-        if (data.success) setStats(data.stats);
-        setLoading(false);
+        try {
+            const res = await authFetch('/api/stats');
+            const data = await res.json();
+            if (data.success) setStats(data.stats);
+        } catch { /* 401 par authFetch redirect kar deta hai */ }
+    };
+
+    const fetchTeam = async () => {
+        setTeamLoading(true);
+        try {
+            const res = await authFetch('/api/team');
+            const data = await res.json();
+            if (data.success) setTeam(data.team);
+        } catch { /* ignore */ }
+        setTeamLoading(false);
     };
 
     useEffect(() => {
-        if (!localStorage.getItem('admin_token')) return router.push('/');
+        if (!getToken()) {
+            router.push('/');
+            return;
+        }
+        // Purane login (user info ke bina) ko admin maan lo; server phir bhi check karta hai
+        const u = getUser() || { role: 'admin', name: 'Admin' };
+        setUser(u);
         fetchStats();
+        if (u.role === 'admin') fetchTeam();
     }, []);
 
     const logout = () => {
-        localStorage.removeItem('admin_token');
+        clearSession();
         router.push('/');
     };
-
-    const goTo = (status) => router.push(`/admin/members?status=${status}`);
 
     const handleImportFile = async (e) => {
         const file = e.target.files[0];
@@ -38,74 +75,94 @@ export default function Admin() {
         setImportResult(null);
         try {
             const text = await file.text();
-            const res = await fetch('/api/import-members', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
-                body: JSON.stringify({ csv: text }),
-            });
+            const res = await authFetch('/api/import-members', { method: 'POST', body: { csv: text } });
             const data = await res.json();
             setImportResult(data);
             if (data.success) await fetchStats();
         } catch (err) {
-            setImportResult({ success: false, message: 'Failed to read or upload file: ' + err.message });
+            if (err.message !== 'Session expired') {
+                setImportResult({ success: false, message: 'File read ya upload nahi hui: ' + err.message });
+            }
         }
         setImporting(false);
         e.target.value = '';
     };
 
+    if (!user) return null;
+
     return (
-        <div className="page">
-            <div className="topbar">
-                <div>
-                    <h1>Member Dashboard</h1>
-                    <p>Live status of all members in one place</p>
-                </div>
-                <div style={{ display: 'flex', gap: 10 }}>
-                    <label className="btn btn-blue" style={{ cursor: 'pointer', margin: 0 }}>
-                        {importing ? 'Importing...' : 'Import CSV'}
-                        <input
-                            type="file"
-                            accept=".csv"
-                            style={{ display: 'none' }}
-                            onChange={handleImportFile}
-                            disabled={importing}
-                        />
-                    </label>
-                    <button className="btn btn-gray" onClick={logout}>Logout</button>
-                </div>
-            </div>
+        <div className="td-page">
+            <Head><title>Team Management Dashboard</title></Head>
+            <div className="td-layout">
+                {admin && <TeamSidebar team={team} loading={teamLoading} />}
 
-            {importResult && (
-                <div className={`msg ${importResult.success ? 'msg-ok' : 'msg-err'}`} style={{ marginBottom: 16 }}>
-                    {importResult.success
-                        ? `Import done: ${importResult.inserted} added, ${importResult.updated || 0} updated, ${importResult.skipped} skipped out of ${importResult.total}.`
-                        : importResult.message}
-                    {importResult.errors && importResult.errors.length > 0 && (
-                        <details style={{ marginTop: 8 }}>
-                            <summary style={{ cursor: 'pointer' }}>Show details</summary>
-                            <ul style={{ margin: '8px 0 0', paddingLeft: 20 }}>
-                                {importResult.errors.map((e, i) => <li key={i}>{e}</li>)}
-                            </ul>
-                        </details>
+                <main className="td-main">
+                    <header className="td-header">
+                        <div className="td-header-title">
+                            <span className="td-icon-chip td-icon-chip-solid"><IconGrid size={26} /></span>
+                            <div>
+                                <h1>Team Management Dashboard</h1>
+                                <p>{admin ? 'Team members aur unka kaam ek jagah' : `Welcome, ${user.name}`}</p>
+                            </div>
+                        </div>
+                        <div className="td-header-actions">
+                            {admin && (
+                                <label className={`td-btn td-btn-soft ${importing ? 'is-busy' : ''}`}>
+                                    <IconUpload size={18} />
+                                    {importing ? 'Importing...' : 'Import CSV'}
+                                    <input type="file" accept=".csv" className="td-hidden-input" onChange={handleImportFile} disabled={importing} />
+                                </label>
+                            )}
+                            {admin && (
+                                <button type="button" className="td-btn td-btn-soft" onClick={() => setAddOpen(true)}>
+                                    <IconUserPlus size={18} />
+                                    Add Member
+                                </button>
+                            )}
+                            <NotificationBell />
+                            <button type="button" className="td-btn td-btn-gray" onClick={logout}>
+                                <IconLogout size={18} />
+                                Logout
+                            </button>
+                        </div>
+                    </header>
+
+                    {importResult && (
+                        <div className={`msg ${importResult.success ? 'msg-ok' : 'msg-err'}`}>
+                            {importResult.success
+                                ? `Import done: ${importResult.inserted} added/updated, ${importResult.skipped} skipped, total ${importResult.total}.`
+                                : importResult.message}
+                            {importResult.errors && importResult.errors.length > 0 && (
+                                <details style={{ marginTop: 8 }}>
+                                    <summary style={{ cursor: 'pointer' }}>Details dekho</summary>
+                                    <ul style={{ margin: '8px 0 0', paddingLeft: 20 }}>
+                                        {importResult.errors.map((e, i) => <li key={i}>{e}</li>)}
+                                    </ul>
+                                </details>
+                            )}
+                        </div>
                     )}
-                </div>
-            )}
 
-            <div className="stats-row">
-                <StatCard title="Total Members" value={loading ? '-' : stats.total} variant="total" onClick={() => goTo('all')} />
-                <StatCard title="Pending" value={loading ? '-' : stats.pending} variant="pending" onClick={() => goTo('pending')} />
-                <StatCard title="Approved" value={loading ? '-' : stats.approved} variant="approved" onClick={() => goTo('approved')} />
-                <StatCard title="Rejected" value={loading ? '-' : stats.rejected} variant="rejected" onClick={() => goTo('rejected')} />
-                <StatCard title="Expired" value={loading ? '-' : stats.expired} variant="expired" onClick={() => goTo('expired')} />
-                <StatCard title="New" value={loading ? '-' : stats.new} variant="new" onClick={() => goTo('new')} />
-                <StatCard title="Need Review" value={loading ? '-' : stats.needReview} variant="needreview" onClick={() => goTo('need_review')} />
+                    <section className="td-stats" aria-label="Member status">
+                        {CARDS.map(({ key, status, title, variant, Icon }) => (
+                            <StatCard
+                                key={key}
+                                title={title}
+                                variant={variant}
+                                value={stats ? stats[key] : '-'}
+                                icon={<Icon />}
+                                onClick={() => router.push(`/admin/members?status=${status}`)}
+                            />
+                        ))}
+                    </section>
+                </main>
             </div>
 
-            <div className="table-card">
-                <div className="empty" style={{ padding: 60 }}>
-                    Click a status card above to view that list of members.
-                </div>
-            </div>
+            <AddMemberModal
+                open={addOpen}
+                onClose={() => setAddOpen(false)}
+                onAdded={() => fetchTeam()}
+            />
         </div>
     );
 }
