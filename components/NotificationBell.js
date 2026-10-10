@@ -9,6 +9,7 @@ function describe(a) {
     switch (a.action) {
         case 'status_change': return `ne ${a.member_label || 'member'} ko ${STATUS_TEXT[a.new_status] || a.new_status} kiya`;
         case 'member_delete': return `ne ${a.member_label || 'member'} ko delete kiya`;
+        case 'member_restore': return `ne ${a.member_label || 'member'} ko wapas laaya (restore kiya)`;
         case 'member_create': return `ne ${a.member_label || 'naya member'} add kiya`;
         case 'import': return 'ne CSV import kiya';
         case 'team_add': return `ne ${a.member_label} ko team mein add kiya`;

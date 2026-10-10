@@ -15,7 +15,7 @@ export default function TeamSidebar({ team, loading, activeId }) {
             </div>
 
             {!loading && team.length === 0 && (
-                <p className="td-sidebar-empty">Abhi koi team member nahi hai. Upar "Add Member" se pehla member jodo.</p>
+                <p className="td-sidebar-empty">Abhi koi team member nahi hai. Upar "Add Team Member" se pehla member jodo.</p>
             )}
 
             <ul className="td-team-list">

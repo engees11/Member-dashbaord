@@ -1,21 +1,20 @@
 import { supabase } from '../../../lib/supabase';
-import { normalizeIndianPhone, sameName } from '../../../lib/phone';
+import { normalizeIndianPhone } from '../../../lib/phone';
 import { adminIdentity } from '../../../lib/adminIdentity';
 import {
     generateOtp, hashOtp, sendOtp,
     otpTtlMs, OTP_RESEND_MS, OTP_MAX_PER_HOUR,
 } from '../../../lib/otp';
 
-// The same answer whether or not the name + number match someone, so this cannot be used to find out who is on the team.
-const REPLY = { success: true, message: 'If the name and number match a team member, an OTP has been sent on WhatsApp.', resendIn: 60 };
+// The same answer whether or not the number is registered, so this cannot be used to find out who is on the team.
+const REPLY = { success: true, message: 'If this number is registered, an OTP has been sent on WhatsApp.', resendIn: 60 };
 
-// POST /api/otp/send { name, phone }   (team member login, step 1)
+// POST /api/otp/send { name, phone }   (login, step 1)
+// The mobile number is the identity. `name` is only asked for on the login page, it is NOT used to check anything.
 export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).end();
 
-    const name = String((req.body || {}).name || '').trim();
     const phone = normalizeIndianPhone((req.body || {}).phone);
-    if (!name) return res.status(400).json({ success: false, message: 'Enter your name' });
     if (!phone) return res.status(400).json({ success: false, message: 'Enter a valid 10-digit Indian mobile number' });
 
     try {
@@ -23,14 +22,14 @@ export default async function handler(req, res) {
         const adm = adminIdentity();
         let who = null;
         if (adm && phone === adm.phone) {
-            if (sameName(name, adm.name)) who = { name: adm.name };
+            who = { name: adm.name };
         } else {
             const { data: tm } = await supabase
                 .from('team_members').select('id, name, is_active').eq('phone', phone).maybeSingle();
-            if (tm && tm.is_active && sameName(name, tm.name)) who = tm;
+            if (tm && tm.is_active) who = tm;
         }
 
-        // Not on the team / name does not match / switched off: nothing is sent, no OTP is created
+        // Number not on the team / switched off: nothing is sent, no OTP is created
         if (!who) return res.json(REPLY);
 
         const now = Date.now();

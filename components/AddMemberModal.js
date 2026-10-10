@@ -49,7 +49,7 @@ export default function AddMemberModal({ open, onClose, onAdded }) {
 
     const loginUrl = typeof window !== 'undefined' ? window.location.origin : '';
     const message = added
-        ? `Hi ${added.name}, you can now log in to the team dashboard:\n${loginUrl}\nChoose "Team member (OTP)", enter your name and mobile number (${formatPhone(added.phone)}), and the OTP you get on WhatsApp.`
+        ? `Hi ${added.name}, you can now log in to the team dashboard:\n${loginUrl}\nEnter your mobile number (${formatPhone(added.phone)}) and the OTP you get on WhatsApp.`
         : '';
 
     const copy = async () => {
@@ -74,7 +74,7 @@ export default function AddMemberModal({ open, onClose, onAdded }) {
                     <>
                         <div className="td-reveal">
                             <p className="td-reveal-note">
-                                {added.name} can log in now. On the login page they choose "Team member (OTP)", enter their name and mobile number, and get an OTP on WhatsApp. No password is needed.
+                                {added.name} can log in now. On the login page they enter their mobile number and get an OTP on WhatsApp. No password is needed.
                             </p>
                             <div className="td-reveal-box">
                                 <div>
@@ -121,7 +121,7 @@ export default function AddMemberModal({ open, onClose, onAdded }) {
                                 />
                             </div>
                         </div>
-                        <p className="td-muted td-small">The member logs in with their name and this number. An OTP is sent on WhatsApp each time.</p>
+                        <p className="td-muted td-small">The member logs in with this mobile number. An OTP is sent on WhatsApp each time.</p>
                         <button type="submit" className="td-btn td-btn-primary td-btn-block" disabled={saving}>
                             {saving ? 'Saving...' : 'Save'}
                         </button>

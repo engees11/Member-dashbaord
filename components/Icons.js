@@ -41,6 +41,9 @@ export const IconFile = (p) => (
 export const IconStar = (p) => (
     <Svg {...p}><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" /></Svg>
 );
+export const IconTrash = (p) => (
+    <Svg {...p}><path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /></Svg>
+);
 export const IconArrowLeft = (p) => (
     <Svg width={2.2} {...p}><path d="M19 12H5" /><path d="M12 19l-7-7 7-7" /></Svg>
 );

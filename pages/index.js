@@ -11,7 +11,8 @@ async function postJson(url, body) {
     return res.json();
 }
 
-// One login for everybody (admin and team): name + mobile number + OTP on WhatsApp
+// One login for everybody (admin and team): name + mobile number + OTP on WhatsApp.
+// The name is only asked for. Who you are is decided by the mobile number alone.
 export default function Home() {
     const router = useRouter();
     const [name, setName] = useState('');
@@ -85,6 +86,7 @@ export default function Home() {
                             autoComplete="name"
                             placeholder="Your name"
                             value={name}
+                            autoFocus
                             onChange={(e) => setName(e.target.value)}
                         />
                         <div className="otp-phone">

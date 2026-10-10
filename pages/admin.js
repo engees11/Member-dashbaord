@@ -8,7 +8,7 @@ import NotificationBell from '../components/NotificationBell';
 import { authFetch, clearSession, getToken, getUser } from '../lib/session';
 import {
     IconUsers, IconClock, IconCheck, IconX, IconHourglass, IconFile, IconStar,
-    IconGrid, IconUpload, IconUserPlus, IconLogout,
+    IconGrid, IconUpload, IconUserPlus, IconLogout, IconTrash,
 } from '../components/Icons';
 
 const CARDS = [
@@ -19,6 +19,7 @@ const CARDS = [
     { key: 'expired', status: 'expired', title: 'Expired', variant: 'expired', Icon: IconHourglass },
     { key: 'new', status: 'new', title: 'New', variant: 'new', Icon: IconFile },
     { key: 'needReview', status: 'need_review', title: 'Need Review', variant: 'review', Icon: IconStar },
+    { key: 'deleted', href: '/admin/deleted', title: 'Deleted', variant: 'deleted', Icon: IconTrash, adminOnly: true },
 ];
 
 export default function Admin() {
@@ -116,7 +117,7 @@ export default function Admin() {
                             {admin && (
                                 <button type="button" className="td-btn td-btn-soft" onClick={() => setAddOpen(true)}>
                                     <IconUserPlus size={18} />
-                                    Add Member
+                                    Add Team Member
                                 </button>
                             )}
                             <NotificationBell />
@@ -144,14 +145,14 @@ export default function Admin() {
                     )}
 
                     <section className="td-stats" aria-label="Member status">
-                        {CARDS.map(({ key, status, title, variant, Icon }) => (
+                        {CARDS.filter((c) => !c.adminOnly || admin).map(({ key, status, href, title, variant, Icon }) => (
                             <StatCard
                                 key={key}
                                 title={title}
                                 variant={variant}
                                 value={stats ? stats[key] : '-'}
                                 icon={<Icon />}
-                                onClick={() => router.push(`/admin/members?status=${status}`)}
+                                onClick={() => router.push(href || `/admin/members?status=${status}`)}
                             />
                         ))}
                     </section>

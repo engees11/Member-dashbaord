@@ -1,42 +1,62 @@
 import { supabase } from '../../lib/supabase';
 import { requireUser } from '../../lib/auth';
-
-async function countWhere(column, value) {
-    let query = supabase.from('members').select('*', { count: 'exact', head: true });
-    if (value === null) {
-        query = query.is(column, null);
-    } else {
-        query = query.eq(column, value);
-    }
-    const { count, error } = await query;
-    if (error) throw error;
-    return count || 0;
-}
+import { missingDeletedColumn } from '../../lib/softDelete';
 
 export default async function handler(req, res) {
     if (!(await requireUser(req))) return res.status(401).json({ success: false });
 
-    try {
-        const { count: total } = await supabase.from('members').select('*', { count: 'exact', head: true });
+    // Deleted members are left out of every count. If the database has no deleted_at column yet, count everything.
+    let hideDeleted = true;
 
-        const [approved, rejected, expired, newCount, needReview, pendingSet1, pendingSet2] = await Promise.all([
-            countWhere('status', 'approved'),
-            countWhere('status', 'rejected'),
-            countWhere('status', 'expired'),
-            countWhere('status', 'new'),
-            countWhere('status', 'need_review'),
-            countWhere('status', 'pending'),
-            countWhere('status', null),
+    async function count(addFilter) {
+        for (let attempt = 0; attempt < 2; attempt++) {
+            const withFilter = hideDeleted;
+            let q = supabase.from('members').select('*', { count: 'exact', head: true });
+            q = addFilter(q);
+            if (withFilter) q = q.is('deleted_at', null);
+            const { count: n, error } = await q;
+            if (error && withFilter && missingDeletedColumn(error)) {
+                hideDeleted = false;
+                continue;
+            }
+            if (error) throw error;
+            return n || 0;
+        }
+        return 0;
+    }
+
+    const byStatus = (status) => count((q) => (status === null ? q.is('status', null) : q.eq('status', status)));
+
+    try {
+        const [total, approved, rejected, expired, newCount, needReview, pendingSet1, pendingSet2, deleted] = await Promise.all([
+            count((q) => q),
+            byStatus('approved'),
+            byStatus('rejected'),
+            byStatus('expired'),
+            byStatus('new'),
+            byStatus('need_review'),
+            byStatus('pending'),
+            byStatus(null),
+            (async () => {
+                const { count: n, error } = await supabase
+                    .from('members').select('*', { count: 'exact', head: true }).not('deleted_at', 'is', null);
+                if (error) {
+                    if (missingDeletedColumn(error)) return 0;
+                    throw error;
+                }
+                return n || 0;
+            })(),
         ]);
 
         const stats = {
-            total: total || 0,
+            total,
             pending: pendingSet1 + pendingSet2,
             approved,
             rejected,
             expired,
             new: newCount,
             needReview,
+            deleted,
         };
 
         return res.json({ success: true, stats });

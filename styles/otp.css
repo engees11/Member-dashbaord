@@ -52,3 +52,7 @@
 .tl-meta { margin-top: 4px; font-size: 13px; color: #64748b; }
 .tl-note { margin-top: 4px; font-size: 13px; font-style: italic; color: #334155; }
 .tl-empty { font-size: 13px; color: #94a3b8; }
+
+/* Deleted card on the dashboard */
+.td-stat-deleted .td-stat-icon { background: #FDE8E8; color: #B42318; }
+.td-stat-deleted .td-stat-value { color: #B42318; }

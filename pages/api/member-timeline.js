@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     try {
         const { data: m } = await supabase
             .from('members')
-            .select('id, status, created_at, updated_at, reviewed_at')
+            .select('*')
             .eq('id', id)
             .maybeSingle();
         if (!m) return res.status(404).json({ success: false, message: 'Member not found' });
@@ -22,7 +22,7 @@ export default async function handler(req, res) {
             .from('member_activity')
             .select('id, action, actor_name, old_status, new_status, note, created_at')
             .eq('member_id', id)
-            .in('action', ['status_change', 'member_create', 'form_submit'])
+            .in('action', ['status_change', 'member_create', 'form_submit', 'member_delete', 'member_restore'])
             .order('created_at', { ascending: true })
             .limit(300);
         if (error) throw error;
@@ -31,6 +31,10 @@ export default async function handler(req, res) {
         for (const a of rows || []) {
             if (a.action === 'status_change') {
                 events.push({ id: a.id, status: a.new_status, from: a.old_status, at: a.created_at, by: a.actor_name, note: a.note, label: null });
+            } else if (a.action === 'member_delete') {
+                events.push({ id: a.id, status: 'deleted', from: a.old_status, at: a.created_at, by: a.actor_name, note: null, label: 'Deleted' });
+            } else if (a.action === 'member_restore') {
+                events.push({ id: a.id, status: a.new_status || 'pending', from: null, at: a.created_at, by: a.actor_name, note: null, label: 'Restored' });
             } else if (a.action === 'member_create') {
                 events.push({ id: a.id, status: a.new_status || 'new', from: null, at: a.created_at, by: a.actor_name, note: null, label: 'Added manually' });
             } else {
@@ -43,7 +47,7 @@ export default async function handler(req, res) {
             events.unshift({ id: 'before', status: events[0].from, from: null, at: null, by: null, note: null, label: 'Earlier status' });
         }
 
-        const current = m.status || 'pending';
+        const current = m.deleted_at ? 'deleted' : (m.status || 'pending');
         if (!events.length) {
             events.push({
                 id: 'current', status: current, from: null,

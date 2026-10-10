@@ -1,5 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import { requireUser } from '../../lib/auth';
+import { missingDeletedColumn } from '../../lib/softDelete';
 
 export default async function handler(req, res) {
     if (!(await requireUser(req))) return res.status(401).json({ success: false });
@@ -7,15 +8,20 @@ export default async function handler(req, res) {
     let allMembers = [];
     let from = 0;
     const pageSize = 1000;
+    let hideDeleted = true; // switched off only if the database has no deleted_at column yet
 
     while (true) {
-        const { data, error } = await supabase
-            .from('members')
-            .select('*')
+        let q = supabase.from('members').select('*');
+        if (hideDeleted) q = q.is('deleted_at', null);
+        const { data, error } = await q
             .order('created_at', { ascending: false })
             .order('id', { ascending: true })
             .range(from, from + pageSize - 1);
 
+        if (error && hideDeleted && missingDeletedColumn(error)) {
+            hideDeleted = false;
+            continue;
+        }
         if (error) return res.json({ success: false, message: error.message });
         allMembers = allMembers.concat(data);
         if (data.length < pageSize) break;

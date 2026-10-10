@@ -1,4 +1,4 @@
-# OTP login for everyone (WhatsApp template), Add Member, status timeline
+# OTP login for everyone (WhatsApp template), Add Team Member, status timeline
 
 ## 0. Install (once)
 ```
@@ -9,6 +9,7 @@ npm install
 Supabase -> SQL Editor -> paste and Run:
 1. `supabase/team-management.sql`
 2. `supabase/otp-and-timeline.sql`
+3. `supabase/soft-delete.sql` (for Delete + Restore of members)
 
 ## 2. WhatsApp OTP template (11za)
 Create ONE template in 11za (type AUTHENTICATION / OTP). It is used for every member, the app fills in a new OTP each time.
@@ -40,22 +41,28 @@ Everybody logs in with the same OTP form, the admin too. Add these in `.env.loca
 | Name | Value |
 |---|---|
 | `ADMIN_PHONE` | the admin's 10-digit mobile number (must have WhatsApp) |
-| `ADMIN_NAME` | the admin's name, optional, default `Admin` |
+| `ADMIN_NAME` | the admin's name shown in the dashboard, optional, default `Admin` |
 
 ## 4. How it works
 - Login page (same for everyone): name + mobile number -> Send OTP on WhatsApp -> enter the OTP -> logged in.
-- Admin: dashboard -> Add Member -> name, email, +91 mobile number -> Save. No OTP and no password at this step.
-- The name typed at login must match the saved one (capital/small letters don't matter, the first name alone is enough).
+- The name is only asked for. It is NOT checked. Who you are is decided by the mobile number alone, so a spelling mistake in the name never blocks a login.
+- Admin: dashboard -> Add Team Member -> name, email, +91 mobile number -> Save. No OTP and no password at this step.
 - OTP is valid 15 minutes (OTP_EXPIRY_MINUTES) and works once. 5 wrong tries per OTP, 10 wrong tries per number per hour. 1 new OTP per minute, 5 per hour per number.
-- If the name/number does not match anybody, nothing is sent and the page shows the same message, so nobody can use it to find out who is on the team.
+- If the number is not registered, nothing is sent and the page shows the same message, so nobody can use it to find out who is on the team.
 
 ## 5. Emergency admin login (if WhatsApp OTP stops working)
 Open `/admin-login` on your site (it is not linked anywhere) and log in with `ADMIN_EMAIL` + `ADMIN_PASSWORD`.
 Once OTP works well, remove `ADMIN_PASSWORD` from `.env.local` and Vercel to switch this off completely.
 
-## 6. Status timeline
+## 6. Delete and Restore (members)
+- Member -> View -> **Delete member** (admin only). The member is NOT removed. It is marked as deleted and leaves all lists and counts.
+- Dashboard -> **Deleted** card (admin only) -> list of deleted members with who deleted them and when -> **Restore** brings a member back with the same status and data.
+- Needs `supabase/soft-delete.sql` once. Until it is run, nothing breaks, Delete just asks you to run it.
+- CSV import does not bring deleted members back. A deleted member who fills the form again stays in the Deleted list until restored.
+
+## 7. Status timeline
 Member -> View shows a timeline instead of one status badge, e.g. New -> Rejected (reason) -> Approved, with who and when.
-It is built from the activity log, so it starts from the day this version goes live.
+It is built from the activity log, so it starts from the day this version goes live. Delete and Restore also show up in it.
 Members changed before that show only their current status.
 Form submissions are also recorded in the timeline.
 The status badge is still shown in the member lists (tables).

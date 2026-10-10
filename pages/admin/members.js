@@ -67,7 +67,7 @@ export default function MembersList() {
     };
 
     const deleteMember = async (id) => {
-        if (!confirm('This will permanently delete this member. Are you sure?')) return;
+        if (!confirm('This member will move to the Deleted list. You can restore them from there. Delete?')) return;
         setActionMsg('');
         try {
             const res = await fetch('/api/delete-member', {
