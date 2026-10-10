@@ -3,7 +3,7 @@ import { signToken } from '../../../lib/auth';
 import { logActivity } from '../../../lib/activity';
 import { normalizeIndianPhone } from '../../../lib/phone';
 import { adminIdentity } from '../../../lib/adminIdentity';
-import { consumeOtp } from '../../../lib/otp';
+import { consumeOtp, maskPhone } from '../../../lib/otp';
 
 // POST /api/otp/verify { phone, code }   (team member login, step 2) -> login token
 export default async function handler(req, res) {
@@ -17,7 +17,11 @@ export default async function handler(req, res) {
 
     try {
         const check = await consumeOtp(supabase, phone, code);
-        if (!check.ok) return res.status(check.status).json({ success: false, message: check.message });
+        if (!check.ok) {
+            console.info(`[otp] ${maskPhone(phone)}: login refused (${check.message})`);
+            return res.status(check.status).json({ success: false, message: check.message });
+        }
+        console.info(`[otp] ${maskPhone(phone)}: OTP correct, logging in`);
 
         // the main admin (same OTP login as everybody)
         const adm = adminIdentity();

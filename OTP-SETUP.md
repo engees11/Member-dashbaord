@@ -66,3 +66,16 @@ It is built from the activity log, so it starts from the day this version goes l
 Members changed before that show only their current status.
 Form submissions are also recorded in the timeline.
 The status badge is still shown in the member lists (tables).
+
+## 8. Where to see the OTP logs
+Every OTP request prints lines starting with `[otp]` (the number is masked, the token and the OTP are never printed):
+- On your computer: the terminal where `npm run dev` is running.
+- On the live site: Vercel -> your project -> **Logs** (filter for `/api/otp/send`).
+
+What the lines mean:
+- `nothing sent, this number is not the admin and not an active team member` -> the number typed is not `ADMIN_PHONE` and not a saved team member. Nothing went to 11za.
+- `NOT sent to 11za: WHATSAPP_OTP_TEMPLATE ... is not set` -> the setting is missing on this server (restart after editing `.env.local`, redeploy after editing Vercel).
+- `sending to 11za: template=... language=...` -> the request was made to 11za.
+- `11za replied HTTP ...: {...}` -> what 11za answered. A refusal also prints `11za OTP send failed`.
+- `asked again too soon` / `hourly limit` -> the 60 second / 5 per hour rule.
+

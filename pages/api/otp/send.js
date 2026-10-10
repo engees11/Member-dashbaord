@@ -2,7 +2,7 @@ import { supabase } from '../../../lib/supabase';
 import { normalizeIndianPhone } from '../../../lib/phone';
 import { adminIdentity } from '../../../lib/adminIdentity';
 import {
-    generateOtp, hashOtp, sendOtp,
+    generateOtp, hashOtp, sendOtp, maskPhone,
     otpTtlMs, OTP_RESEND_MS, OTP_MAX_PER_HOUR,
 } from '../../../lib/otp';
 
@@ -30,7 +30,10 @@ export default async function handler(req, res) {
         }
 
         // Number not on the team / switched off: nothing is sent, no OTP is created
-        if (!who) return res.json(REPLY);
+        if (!who) {
+            console.info(`[otp] ${maskPhone(phone)}: nothing sent, this number is not the admin and not an active team member (ADMIN_PHONE is ${adm ? 'set' : 'NOT set'})`);
+            return res.json(REPLY);
+        }
 
         const now = Date.now();
         const { data: recent } = await supabase
@@ -45,10 +48,12 @@ export default async function handler(req, res) {
             const since = now - new Date(list[0].created_at).getTime();
             if (since < OTP_RESEND_MS) {
                 const wait = Math.ceil((OTP_RESEND_MS - since) / 1000);
+                console.info(`[otp] ${maskPhone(phone)}: nothing sent, asked again too soon (wait ${wait}s)`);
                 return res.status(429).json({ success: false, message: `Please wait ${wait} seconds before asking for a new OTP`, retryAfter: wait });
             }
         }
         if (list.length >= OTP_MAX_PER_HOUR) {
+            console.info(`[otp] ${maskPhone(phone)}: nothing sent, hourly limit of ${OTP_MAX_PER_HOUR} OTPs reached`);
             return res.status(429).json({ success: false, message: 'Too many OTP requests. Please try again in an hour.' });
         }
 
@@ -60,8 +65,10 @@ export default async function handler(req, res) {
             .single();
         if (error) throw error;
 
+        console.info(`[otp] ${maskPhone(phone)}: number accepted (${who.name}), sending OTP`);
         const sent = await sendOtp(phone, code, who.name);
         if (!sent.ok) {
+            console.info(`[otp] ${maskPhone(phone)}: FAILED (${sent.error})`);
             await supabase.from('login_otps').delete().eq('id', row.id);
             return res.status(502).json({ success: false, message: 'Could not send the OTP right now. Please try again, or ask the admin.' });
         }
