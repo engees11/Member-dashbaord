@@ -10,6 +10,7 @@ Supabase -> SQL Editor -> paste and Run:
 1. `supabase/team-management.sql`
 2. `supabase/otp-and-timeline.sql`
 3. `supabase/soft-delete.sql` (for Delete + Restore of members)
+4. `supabase/team-roles-and-delete.sql` (for Admin / Team member roles and Delete + Restore of team members)
 
 ## 2. WhatsApp OTP template (11za)
 Create ONE template in 11za (type AUTHENTICATION / OTP). It is used for every member, the app fills in a new OTP each time.
@@ -67,7 +68,18 @@ Members changed before that show only their current status.
 Form submissions are also recorded in the timeline.
 The status badge is still shown in the member lists (tables).
 
-## 8. Where to see the OTP logs
+## 8. Admin and Team members (roles)
+- Sidebar (admin only): two sections, **Admin** and **Team members**. Both are closed until clicked. Click a name or **View** to open that person's page.
+- The main admin (from `.env`) is always listed first under Admin, tagged "Main". His page shows his own work.
+- On a person's page, an admin can: **Make admin / Make member**, **Deactivate / Activate**, **Delete**.
+- Any number of admins is possible. An admin can make others admin. Nobody can change or delete themselves, and nobody can change the main admin.
+- Role is read from the database on every request, so a change works at once. The person's dashboard refreshes the role when it opens.
+- **Add Team Member** has a Role field (Team member / Admin).
+- **Delete** (team members): the person is only marked as deleted. Login stops at once and they leave the sidebar. The dashboard **Deleted** card opens a page with two tables, Members and Team members, each with **Restore**.
+- Adding someone with the email or number of a deleted team member points you to the Deleted list instead of creating a duplicate.
+- Needs `supabase/team-roles-and-delete.sql` once. Until it is run nothing breaks: everyone is a Team member, and Make admin / Delete / admin-role just say to run it.
+
+## 9. Where to see the OTP logs
 Every OTP request prints lines starting with `[otp]` (the number is masked, the token and the OTP are never printed):
 - On your computer: the terminal where `npm run dev` is running.
 - On the live site: Vercel -> your project -> **Logs** (filter for `/api/otp/send`).

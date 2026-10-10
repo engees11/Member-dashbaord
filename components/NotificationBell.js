@@ -15,6 +15,10 @@ function describe(a) {
         case 'team_add': return `ne ${a.member_label} ko team mein add kiya`;
         case 'team_deactivate': return `ne ${a.member_label} ko inactive kiya`;
         case 'team_activate': return `ne ${a.member_label} ko active kiya`;
+        case 'team_delete': return `ne ${a.member_label} ko team se delete kiya`;
+        case 'team_restore': return `ne ${a.member_label} ko team mein wapas laaya`;
+        case 'team_make_admin': return `ne ${a.member_label} ko admin banaya`;
+        case 'team_make_member': return `ne ${a.member_label} ko team member banaya`;
         case 'password_reset': return `ne ${a.member_label} ka password reset kiya`;
         default: return a.action;
     }

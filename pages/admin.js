@@ -5,7 +5,7 @@ import StatCard from '../components/StatCard';
 import TeamSidebar from '../components/TeamSidebar';
 import AddMemberModal from '../components/AddMemberModal';
 import NotificationBell from '../components/NotificationBell';
-import { authFetch, clearSession, getToken, getUser } from '../lib/session';
+import { authFetch, clearSession, getToken, getUser, saveUser } from '../lib/session';
 import {
     IconUsers, IconClock, IconCheck, IconX, IconHourglass, IconFile, IconStar,
     IconGrid, IconUpload, IconUserPlus, IconLogout, IconTrash,
@@ -27,6 +27,7 @@ export default function Admin() {
     const [user, setUser] = useState(null);
     const [stats, setStats] = useState(null);
     const [team, setTeam] = useState([]);
+    const [mainAdmin, setMainAdmin] = useState(null);
     const [teamLoading, setTeamLoading] = useState(true);
     const [importing, setImporting] = useState(false);
     const [importResult, setImportResult] = useState(null);
@@ -47,7 +48,10 @@ export default function Admin() {
         try {
             const res = await authFetch('/api/team');
             const data = await res.json();
-            if (data.success) setTeam(data.team);
+            if (data.success) {
+                setTeam(data.team);
+                setMainAdmin(data.main || null);
+            }
         } catch { /* ignore */ }
         setTeamLoading(false);
     };
@@ -62,6 +66,19 @@ export default function Admin() {
         setUser(u);
         fetchStats();
         if (u.role === 'admin') fetchTeam();
+
+        // The role can change after login (someone made you admin): ask the server and refresh
+        (async () => {
+            try {
+                const res = await authFetch('/api/me');
+                const data = await res.json();
+                if (data.success && data.user) {
+                    saveUser(data.user);
+                    setUser(data.user);
+                    if (data.user.role === 'admin' && u.role !== 'admin') fetchTeam();
+                }
+            } catch { /* 401 par authFetch login par bhej deta hai */ }
+        })();
     }, []);
 
     const logout = () => {
@@ -95,7 +112,7 @@ export default function Admin() {
         <div className="td-page">
             <Head><title>Team Management Dashboard</title></Head>
             <div className="td-layout">
-                {admin && <TeamSidebar team={team} loading={teamLoading} />}
+                {admin && <TeamSidebar team={team} main={mainAdmin} loading={teamLoading} />}
 
                 <main className="td-main">
                     <header className="td-header">

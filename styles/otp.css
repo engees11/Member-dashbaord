@@ -56,3 +56,26 @@
 /* Deleted card on the dashboard */
 .td-stat-deleted .td-stat-icon { background: #FDE8E8; color: #B42318; }
 .td-stat-deleted .td-stat-value { color: #B42318; }
+
+/* Sidebar sections: Admin and Team members (closed until clicked) */
+.td-group { margin-bottom: 6px; }
+.td-group-head {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 10px; border: none; border-radius: 12px; background: transparent;
+    font: inherit; font-weight: 700; color: #1D2939; cursor: pointer; text-align: left;
+}
+.td-group-head:hover { background: #F1F5FF; }
+.td-chevron { display: inline-block; width: 14px; font-size: 20px; line-height: 1; color: #667085; transition: transform .15s; }
+.td-chevron.is-open { transform: rotate(90deg); }
+.td-group-title { flex: 1; }
+.td-group-count { padding: 1px 9px; border-radius: 999px; background: #EEF2FF; color: #3446B8; font-size: 12px; font-weight: 700; }
+.td-team-link {
+    display: flex; align-items: center; gap: 12px; flex: 1 1 auto; min-width: 0;
+    color: inherit; text-decoration: none;
+}
+.td-team-row.is-off .td-team-link { opacity: 0.55; }
+.td-team-tag {
+    margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: #E8EDFF; color: #3446B8;
+    font-size: 11px; font-weight: 700; vertical-align: middle;
+}
+.td-profile h1 .td-team-tag { font-size: 12px; }

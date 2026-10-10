@@ -19,6 +19,7 @@ const OTHER_ACTIONS = {
     login: 'Login kiya',
     member_create: 'Naya member add kiya',
     member_delete: 'Member delete kiya',
+    member_restore: 'Member wapas laaya (restore)',
     import: 'CSV import kiya',
 };
 
@@ -77,13 +78,21 @@ export default function TeamMemberDetail() {
     useEffect(() => { load(); }, [id, date]);
 
     const act = async (action) => {
-        if (action === 'deactivate' && !confirm(`${data.member.name} ka login band karna hai?`)) return;
+        const name = data.member.name;
+        const ask = {
+            deactivate: `${name} ka login band karna hai?`,
+            make_admin: `${name} ko admin banana hai? Wo members delete, CSV import aur team manage bhi kar payega.`,
+            make_member: `${name} ko wapas team member banana hai? Admin ke kaam band ho jayenge.`,
+            delete: `${name} ko delete karna hai? Login band ho jayega. Deleted list se wapas la sakte ho.`,
+        }[action];
+        if (ask && !confirm(ask)) return;
         setBusy(true);
         setErr('');
         try {
             const res = await authFetch(`/api/team/${id}`, { method: 'POST', body: { action } });
             const json = await res.json();
             if (!json.success) setErr(json.message || 'Action fail hua');
+            else if (action === 'delete') router.push('/admin');
             else setData((d) => ({ ...d, member: json.member }));
         } catch (e) {
             if (e.message !== 'Session expired') setErr('Network error, dobara try karo');
@@ -114,16 +123,26 @@ export default function TeamMemberDetail() {
                             <div>
                                 <h1>
                                     {member.name}
+                                    <span className="td-team-tag">{member.main ? 'Main admin' : member.role === 'admin' ? 'Admin' : 'Team member'}</span>
                                     {!member.is_active && <span className="td-team-off">Inactive</span>}
                                 </h1>
                                 {member.email && <p>{member.email}</p>}
                                 {member.phone && <p>{formatPhone(member.phone)}</p>}
-                                <p className="td-small">Team mein joined: {fmtDate(member.created_at)}</p>
-                                <p className="td-small">Last login: {fmtDateTime(member.last_login_at)}</p>
+                                {!member.main && <p className="td-small">Team mein joined: {fmtDate(member.created_at)}</p>}
+                                {!member.main && <p className="td-small">Last login: {fmtDateTime(member.last_login_at)}</p>}
                             </div>
                         </div>
-                        {admin && (
+                        {admin && !member.main && user.id !== member.id && (
                             <div className="td-header-actions">
+                                {member.role === 'admin' ? (
+                                    <button type="button" className="td-btn td-btn-soft" onClick={() => act('make_member')} disabled={busy}>
+                                        Make member
+                                    </button>
+                                ) : (
+                                    <button type="button" className="td-btn td-btn-soft" onClick={() => act('make_admin')} disabled={busy}>
+                                        Make admin
+                                    </button>
+                                )}
                                 {member.is_active ? (
                                     <button type="button" className="td-btn td-btn-danger" onClick={() => act('deactivate')} disabled={busy}>
                                         Deactivate
@@ -133,6 +152,9 @@ export default function TeamMemberDetail() {
                                         Activate
                                     </button>
                                 )}
+                                <button type="button" className="td-btn td-btn-danger" onClick={() => act('delete')} disabled={busy}>
+                                    Delete
+                                </button>
                             </div>
                         )}
                     </header>

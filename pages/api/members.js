@@ -1,6 +1,5 @@
 import { supabase } from '../../lib/supabase';
 import { requireUser } from '../../lib/auth';
-import { missingDeletedColumn } from '../../lib/softDelete';
 
 export default async function handler(req, res) {
     if (!(await requireUser(req))) return res.status(401).json({ success: false });
@@ -18,11 +17,15 @@ export default async function handler(req, res) {
             .order('id', { ascending: true })
             .range(from, from + pageSize - 1);
 
-        if (error && hideDeleted && missingDeletedColumn(error)) {
+        if (error && hideDeleted) {
+            // the deleted_at filter failed (column not added yet): load without it rather than show nothing
             hideDeleted = false;
             continue;
         }
-        if (error) return res.json({ success: false, message: error.message });
+        if (error) {
+            console.error('[members] failed:', error.message);
+            return res.json({ success: false, message: error.message });
+        }
         allMembers = allMembers.concat(data);
         if (data.length < pageSize) break;
         from += pageSize;

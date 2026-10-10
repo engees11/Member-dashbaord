@@ -32,14 +32,16 @@ export default async function handler(req, res) {
         }
 
         const { data: tm } = await supabase
-            .from('team_members').select('id, name, email, phone, is_active').eq('phone', phone).maybeSingle();
+            .from('team_members').select('*').eq('phone', phone).maybeSingle();
         if (!tm) return res.status(401).json({ success: false, message: 'This number is not registered. Please ask the admin to add you.' });
+        if (tm.deleted_at) return res.status(403).json({ success: false, message: 'This account was removed. Please talk to the admin.' });
         if (!tm.is_active) return res.status(403).json({ success: false, message: 'Your account is switched off. Please talk to the admin.' });
 
-        const user = { role: 'member', id: tm.id, name: tm.name, phone: tm.phone, email: tm.email || null };
+        // The token always says "member": the real role (admin or member) is read from the database on every request
+        const user = { role: tm.role === 'admin' ? 'admin' : 'member', id: tm.id, name: tm.name, phone: tm.phone, email: tm.email || null };
         await supabase.from('team_members').update({ last_login_at: new Date().toISOString() }).eq('id', tm.id);
         await logActivity(user, 'login');
-        return res.json({ success: true, token: signToken(user), user });
+        return res.json({ success: true, token: signToken({ ...user, role: 'member' }), user });
     } catch (e) {
         return res.status(500).json({ success: false, message: 'Server error: ' + e.message });
     }

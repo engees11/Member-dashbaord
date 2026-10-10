@@ -8,6 +8,7 @@ export default function AddMemberModal({ open, onClose, onAdded }) {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
+    const [role, setRole] = useState('member');
     const [err, setErr] = useState('');
     const [saving, setSaving] = useState(false);
     const [added, setAdded] = useState(null);
@@ -16,7 +17,7 @@ export default function AddMemberModal({ open, onClose, onAdded }) {
 
     useEffect(() => {
         if (!open) return;
-        setName(''); setEmail(''); setPhone(''); setErr(''); setSaving(false); setAdded(null); setCopied(false);
+        setName(''); setEmail(''); setPhone(''); setRole('member'); setErr(''); setSaving(false); setAdded(null); setCopied(false);
         setTimeout(() => nameRef.current && nameRef.current.focus(), 30);
         const onKey = (e) => e.key === 'Escape' && onClose();
         document.addEventListener('keydown', onKey);
@@ -33,7 +34,7 @@ export default function AddMemberModal({ open, onClose, onAdded }) {
         if (phone.replace(/\D/g, '').length < 10) return setErr('Enter the 10-digit mobile number');
         setSaving(true);
         try {
-            const res = await authFetch('/api/team', { method: 'POST', body: { name, email, phone } });
+            const res = await authFetch('/api/team', { method: 'POST', body: { name, email, phone, role } });
             const data = await res.json();
             if (!data.success) {
                 setErr(data.message || 'Could not add the team member');
@@ -120,6 +121,13 @@ export default function AddMemberModal({ open, onClose, onAdded }) {
                                     required
                                 />
                             </div>
+                        </div>
+                        <div className="td-field">
+                            <label htmlFor="tm-role">Role</label>
+                            <select id="tm-role" value={role} onChange={(e) => setRole(e.target.value)}>
+                                <option value="member">Team member</option>
+                                <option value="admin">Admin (can also import, delete members and manage the team)</option>
+                            </select>
                         </div>
                         <p className="td-muted td-small">The member logs in with this mobile number. An OTP is sent on WhatsApp each time.</p>
                         <button type="submit" className="td-btn td-btn-primary td-btn-block" disabled={saving}>

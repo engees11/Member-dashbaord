@@ -25,8 +25,8 @@ export default async function handler(req, res) {
             who = { name: adm.name };
         } else {
             const { data: tm } = await supabase
-                .from('team_members').select('id, name, is_active').eq('phone', phone).maybeSingle();
-            if (tm && tm.is_active) who = tm;
+                .from('team_members').select('*').eq('phone', phone).maybeSingle();
+            if (tm && tm.is_active && !tm.deleted_at) who = tm;
         }
 
         // Number not on the team / switched off: nothing is sent, no OTP is created

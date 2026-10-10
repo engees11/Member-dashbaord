@@ -21,21 +21,22 @@ export default async function handler(req, res) {
     try {
         const { data: tm } = await supabase
             .from('team_members')
-            .select('id, name, email, password_hash, is_active')
+            .select('*')
             .eq('email', email)
             .maybeSingle();
 
         // members added with an OTP login have no password at all, so there is nothing to compare
         const ok = tm && tm.password_hash && (await bcrypt.compare(password, tm.password_hash));
         if (!ok) return res.status(401).json({ success: false, message: 'Galat email ya password' });
-        if (!tm.is_active) {
+        if (!tm.is_active || tm.deleted_at) {
             return res.status(403).json({ success: false, message: 'Aapka account band hai. Admin se baat karein.' });
         }
 
-        const user = { role: 'member', id: tm.id, name: tm.name, email: tm.email };
+        const user = { role: tm.role === 'admin' ? 'admin' : 'member', id: tm.id, name: tm.name, email: tm.email };
         await supabase.from('team_members').update({ last_login_at: new Date().toISOString() }).eq('id', tm.id);
         await logActivity(user, 'login');
-        return res.json({ success: true, token: signToken(user), user });
+        // the token says "member"; the real role is read from the database on every request
+        return res.json({ success: true, token: signToken({ ...user, role: 'member' }), user });
     } catch (e) {
         return res.status(500).json({ success: false, message: 'Server error: ' + e.message });
     }
