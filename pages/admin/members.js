@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { getUser, clearSession } from '../../lib/session';
 import MemberForm from '../../components/MemberForm';
 import { fmtDate } from '../../lib/format';
+import { searchMembers, dmy } from '../../lib/memberSearch';
 
 const LABELS = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected', expired: 'Expired', new: 'New', need_review: 'Need Review' };
 const fullName = (m) => [m.first_name, m.father_name, m.last_name].filter(Boolean).join(' ');
@@ -90,20 +91,20 @@ export default function MembersList() {
 
     const byStatus = members.filter((m) => status === 'all' || m.status === status);
     const byTab = byStatus.filter((m) => rowType(m) === tab);
-    const filtered = byTab.filter((m) => {
-        if (!search) return true;
-        const q = search.toLowerCase();
-        return (
-            fullName(m).toLowerCase().includes(q) ||
-            (m.whatsapp_number || '').includes(q.replace(/\s/g, '')) ||
-            (m.membership_no || '').toLowerCase().includes(q) ||
-            (m.email || '').toLowerCase().includes(q)
-        );
-    });
+    // search runs across all three tabs, so each tab button can show how many matches it has
+    const searching = search.trim() !== '';
+    const searched = searching ? searchMembers(byStatus, search) : byStatus;
+    const filtered = searched.filter((m) => rowType(m) === tab);
 
-    const aadhaarCount = byStatus.filter((m) => rowType(m) === 'aadhaar_update').length;
-    const detailsCount = byStatus.filter((m) => rowType(m) === 'details_update').length;
-    const notSubmittedCount = byStatus.filter((m) => rowType(m) === 'not_submitted').length;
+    const aadhaarCount = searched.filter((m) => rowType(m) === 'aadhaar_update').length;
+    const detailsCount = searched.filter((m) => rowType(m) === 'details_update').length;
+    const notSubmittedCount = searched.filter((m) => rowType(m) === 'not_submitted').length;
+
+    // if the current tab has no match but another tab does, jump to the tab of the best match
+    useEffect(() => {
+        if (!searching || loading || filtered.length > 0 || searched.length === 0) return;
+        setTab(rowType(searched[0]));
+    }, [search, members, status, loading]);
 
     return (
         <div className="page">
@@ -158,9 +159,9 @@ export default function MembersList() {
                                 Not Submitted ({notSubmittedCount})
                             </button>
                         </div>
-                        <input className="searchbar" placeholder="Search name, mobile, membership no." value={search} onChange={(e) => setSearch(e.target.value)} />
+                        <input className="searchbar" placeholder="Search membership no., name, mobile, Aadhaar, date (DD/MM/YYYY)" value={search} onChange={(e) => setSearch(e.target.value)} />
                     </div>
-                    <p style={{ margin: 0, fontSize: 13, color: '#64748b' }}>{filtered.length} records</p>
+                    <p style={{ margin: 0, fontSize: 13, color: '#64748b' }}>{searching ? `${filtered.length} ${filtered.length === 1 ? 'match' : 'matches'} for "${search.trim()}"` : `${filtered.length} records`}</p>
                 </div>
 
                 <div className="table-wrap">
@@ -180,7 +181,7 @@ export default function MembersList() {
                                             <td><b>{m.membership_no || '-'}</b></td>
                                             <td>{m.email || '-'}</td>
                                             <td>{m.whatsapp_number || '-'}</td>
-                                            <td>{m.submitted_at ? new Date(m.submitted_at).toLocaleDateString() : (m.created_at ? new Date(m.created_at).toLocaleDateString() : '-')}</td>
+                                            <td>{dmy(m.submitted_at || m.created_at) || '-'}</td>
                                             <td><span className={`badge b-${m.status}`}>{LABELS[m.status] || m.status}</span></td>
                                             <td>{rowActions(m)}</td>
                                         </tr>
@@ -210,7 +211,7 @@ export default function MembersList() {
                                             <td>{fmtDate(m.birth_date)}</td>
                                             <td>{m.area || '-'}</td>
                                             <td>{m.aadhaar_number || '-'}</td>
-                                            <td>{m.submitted_at ? new Date(m.submitted_at).toLocaleDateString() : (m.created_at ? new Date(m.created_at).toLocaleDateString() : '-')}</td>
+                                            <td>{dmy(m.submitted_at || m.created_at) || '-'}</td>
                                             <td><span className={`badge b-${m.status}`}>{LABELS[m.status] || m.status}</span></td>
                                             <td>{rowActions(m)}</td>
                                         </tr>

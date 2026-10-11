@@ -77,3 +77,10 @@ button.sh-chip:hover { background: #F9FAFB; }
 .sh-pm-item:hover { background: #F2F4F7; }
 .sh-pm-danger { color: #D92D20; }
 .sh-pm-danger:hover { background: #FEF3F2; }
+.sh-split { position: relative; }
+.sh-split .sh-nav { padding-right: 48px; }
+.sh-split-btn { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: transparent; color: #C9D3E3; cursor: pointer; }
+.sh-split-btn:hover { background: #2A384E; color: #fff; }
+.sh-split-btn.on { color: #1F2A3C; }
+.sh-split-btn.on:hover { background: #EEF2F7; color: #1F2A3C; }
+.sh-split-btn .sh-chev { margin-left: 0; }

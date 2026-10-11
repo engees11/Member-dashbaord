@@ -77,6 +77,11 @@ export default function AppShell({ children }) {
     const [team, setTeam] = useState([]);
     const [main, setMain] = useState(null);
     const [q, setQ] = useState('');
+    const onMembersPage = path.startsWith('/admin/members');
+    const [membersOpen, setMembersOpen] = useState(onMembersPage);
+
+    // open the Members list automatically when you go to a members page
+    useEffect(() => { if (onMembersPage) setMembersOpen(true); }, [onMembersPage]);
 
     const admin = user && user.role === 'admin';
 
@@ -137,14 +142,24 @@ export default function AppShell({ children }) {
                 <nav className="sh-nav-list">
                     <div className="sh-lbl">MENU</div>
                     <Link href="/admin" className={`sh-nav ${path === '/admin' ? 'on' : ''}`}><IconGrid size={20} />Dashboard</Link>
-                    <Link href="/admin/members?status=all" className={`sh-nav ${onMembers ? 'on' : ''}`}>
-                        <IconUsers size={20} />Members
-                        <span className={`sh-chev ${onMembers ? 'open' : ''}`}><IconChevron size={16} /></span>
-                    </Link>
-                    {onMembers && (
+                    <div className="sh-split">
+                        <Link href="/admin/members?status=all" className={`sh-nav ${onMembers ? 'on' : ''}`}>
+                            <IconUsers size={20} />Members
+                        </Link>
+                        <button
+                            type="button"
+                            className={`sh-split-btn ${onMembers ? 'on' : ''}`}
+                            onClick={() => setMembersOpen((o) => !o)}
+                            aria-expanded={membersOpen}
+                            aria-label={membersOpen ? 'Hide member filters' : 'Show member filters'}
+                        >
+                            <span className={`sh-chev ${membersOpen ? 'open' : ''}`}><IconChevron size={16} /></span>
+                        </button>
+                    </div>
+                    {membersOpen && (
                         <div className="sh-sub">
                             {STATUS_LINKS.map(([k, label]) => (
-                                <Link key={k} href={`/admin/members?status=${k}`} className={status === k ? 'on' : ''}>{label}</Link>
+                                <Link key={k} href={`/admin/members?status=${k}`} className={onMembers && status === k ? 'on' : ''}>{label}</Link>
                             ))}
                         </div>
                     )}
