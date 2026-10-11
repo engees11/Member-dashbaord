@@ -16,11 +16,11 @@ const STATUS = {
 };
 
 const OTHER_ACTIONS = {
-    login: 'Login kiya',
-    member_create: 'Naya member add kiya',
-    member_delete: 'Member delete kiya',
-    member_restore: 'Member wapas laaya (restore)',
-    import: 'CSV import kiya',
+    login: 'Logged in',
+    member_create: 'Added a new member',
+    member_delete: 'Deleted a member',
+    member_restore: 'Restored a member',
+    import: 'Imported a CSV',
 };
 
 const todayStr = () => {
@@ -30,7 +30,7 @@ const todayStr = () => {
 
 const fmtDate = (iso) => (iso ? new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '-');
 const fmtTime = (iso) => new Date(iso).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
-const fmtDateTime = (iso) => (iso ? `${fmtDate(iso)}, ${fmtTime(iso)}` : 'Kabhi nahi');
+const fmtDateTime = (iso) => (iso ? `${fmtDate(iso)}, ${fmtTime(iso)}` : 'Never');
 
 function StatusPill({ status }) {
     const s = STATUS[status] || { label: status || '-', cls: 'expired' };
@@ -60,9 +60,9 @@ export default function TeamMemberDetail() {
             const res = await authFetch(`/api/team/${id}?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}`);
             const json = await res.json();
             if (json.success) setData(json);
-            else setErr(json.message || 'Data load nahi hua');
+            else setErr(json.message || 'Could not load data');
         } catch (e) {
-            if (e.message !== 'Session expired') setErr('Network error, dobara try karo');
+            if (e.message !== 'Session expired') setErr('Network error, please try again');
         }
         setLoading(false);
     };
@@ -80,10 +80,10 @@ export default function TeamMemberDetail() {
     const act = async (action) => {
         const name = data.member.name;
         const ask = {
-            deactivate: `${name} ka login band karna hai?`,
-            make_admin: `${name} ko admin banana hai? Wo members delete, CSV import aur team manage bhi kar payega.`,
-            make_member: `${name} ko wapas team member banana hai? Admin ke kaam band ho jayenge.`,
-            delete: `${name} ko delete karna hai? Login band ho jayega. Deleted list se wapas la sakte ho.`,
+            deactivate: `Turn off login for ${name}?`,
+            make_admin: `Make ${name} an admin? They will also be able to delete members, import CSVs and manage the team.`,
+            make_member: `Make ${name} a team member again? They will lose admin access.`,
+            delete: `Delete ${name}? Their login will stop working. You can restore them from the Deleted list.`,
         }[action];
         if (ask && !confirm(ask)) return;
         setBusy(true);
@@ -91,11 +91,11 @@ export default function TeamMemberDetail() {
         try {
             const res = await authFetch(`/api/team/${id}`, { method: 'POST', body: { action } });
             const json = await res.json();
-            if (!json.success) setErr(json.message || 'Action fail hua');
+            if (!json.success) setErr(json.message || 'Action failed');
             else if (action === 'delete') router.push('/admin');
             else setData((d) => ({ ...d, member: json.member }));
         } catch (e) {
-            if (e.message !== 'Session expired') setErr('Network error, dobara try karo');
+            if (e.message !== 'Session expired') setErr('Network error, please try again');
         }
         setBusy(false);
     };
@@ -112,7 +112,7 @@ export default function TeamMemberDetail() {
         <div className="td-page">
             <Head><title>{member ? `${member.name} | Team` : 'Team member'}</title></Head>
             <div className="td-detail">
-                <Link href="/admin" className="td-back"><IconArrowLeft size={18} />Team par wapas</Link>
+                <Link href="/admin" className="td-back"><IconArrowLeft size={18} />Back to dashboard</Link>
 
                 {err && <div className="msg msg-err">{err}</div>}
 
@@ -128,7 +128,7 @@ export default function TeamMemberDetail() {
                                 </h1>
                                 {member.email && <p>{member.email}</p>}
                                 {member.phone && <p>{formatPhone(member.phone)}</p>}
-                                {!member.main && <p className="td-small">Team mein joined: {fmtDate(member.created_at)}</p>}
+                                {!member.main && <p className="td-small">Joined the team: {fmtDate(member.created_at)}</p>}
                                 {!member.main && <p className="td-small">Last login: {fmtDateTime(member.last_login_at)}</p>}
                             </div>
                         </div>
@@ -160,8 +160,8 @@ export default function TeamMemberDetail() {
                     </header>
                 )}
 
-                <section className="td-mini-stats" aria-label="Is din ka kaam">
-                    <div className="td-mini"><span>{date === todayStr() ? 'Aaj total' : 'Us din total'}</span><b>{loading ? '-' : stats.total}</b></div>
+                <section className="td-mini-stats" aria-label="Work done on this day">
+                    <div className="td-mini"><span>{date === todayStr() ? 'Total today' : 'Total that day'}</span><b>{loading ? '-' : stats.total}</b></div>
                     <div className="td-mini td-mini-approved"><span>Approved</span><b>{loading ? '-' : stats.approved}</b></div>
                     <div className="td-mini td-mini-rejected"><span>Rejected</span><b>{loading ? '-' : stats.rejected}</b></div>
                     <div className="td-mini td-mini-review"><span>Need Review</span><b>{loading ? '-' : stats.needReview}</b></div>
@@ -171,7 +171,7 @@ export default function TeamMemberDetail() {
                     <div className="td-card-head">
                         <div>
                             <h2 className="td-card-title">Activity history</h2>
-                            <p className="td-muted td-small">{member ? `${member.name} ne kis member par kya action liya` : ''}</p>
+                            <p className="td-muted td-small">{member ? `Actions ${member.name} took on members` : ''}</p>
                         </div>
                         <div className="td-filters">
                             <div className="td-field">
@@ -181,11 +181,11 @@ export default function TeamMemberDetail() {
                             <div className="td-field">
                                 <label htmlFor="f-action">Action</label>
                                 <select id="f-action" value={filter} onChange={(e) => setFilter(e.target.value)}>
-                                    <option value="all">Sab actions</option>
+                                    <option value="all">All actions</option>
                                     <option value="approved">Approve</option>
                                     <option value="rejected">Reject</option>
                                     <option value="need_review">Need Review</option>
-                                    <option value="other">Baaki (login, delete...)</option>
+                                    <option value="other">Other (login, delete...)</option>
                                 </select>
                             </div>
                         </div>
@@ -200,7 +200,7 @@ export default function TeamMemberDetail() {
                                 {loading ? (
                                     <tr><td colSpan={4} className="empty">Loading...</td></tr>
                                 ) : rows.length === 0 ? (
-                                    <tr><td colSpan={4} className="empty">Is din koi activity nahi mili.</td></tr>
+                                    <tr><td colSpan={4} className="empty">No activity on this day.</td></tr>
                                 ) : (
                                     rows.map((a) => (
                                         <tr key={a.id}>

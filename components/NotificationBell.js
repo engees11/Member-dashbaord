@@ -3,33 +3,33 @@ import { authFetch } from '../lib/session';
 import { IconBell } from './Icons';
 
 const SEEN_KEY = 'notif_seen_at';
-const STATUS_TEXT = { approved: 'Approve', rejected: 'Reject', need_review: 'Need Review', expired: 'Expired', pending: 'Pending', new: 'New' };
+const STATUS_TEXT = { approved: 'Approved', rejected: 'Rejected', need_review: 'Need Review', expired: 'Expired', pending: 'Pending', new: 'New' };
 
 function describe(a) {
     switch (a.action) {
-        case 'status_change': return `ne ${a.member_label || 'member'} ko ${STATUS_TEXT[a.new_status] || a.new_status} kiya`;
-        case 'member_edit': return `ne ${a.member_label || 'member'} ki details edit ki`;
-        case 'member_delete': return `ne ${a.member_label || 'member'} ko delete kiya`;
-        case 'member_restore': return `ne ${a.member_label || 'member'} ko wapas laaya (restore kiya)`;
-        case 'member_create': return `ne ${a.member_label || 'naya member'} add kiya`;
-        case 'import': return 'ne CSV import kiya';
-        case 'team_add': return `ne ${a.member_label} ko team mein add kiya`;
-        case 'team_deactivate': return `ne ${a.member_label} ko inactive kiya`;
-        case 'team_activate': return `ne ${a.member_label} ko active kiya`;
-        case 'team_delete': return `ne ${a.member_label} ko team se delete kiya`;
-        case 'team_restore': return `ne ${a.member_label} ko team mein wapas laaya`;
-        case 'team_make_admin': return `ne ${a.member_label} ko admin banaya`;
-        case 'team_make_member': return `ne ${a.member_label} ko team member banaya`;
-        case 'password_reset': return `ne ${a.member_label} ka password reset kiya`;
+        case 'status_change': return `marked ${a.member_label || 'a member'} as ${STATUS_TEXT[a.new_status] || a.new_status}`;
+        case 'member_edit': return `edited the details of ${a.member_label || 'a member'}`;
+        case 'member_delete': return `deleted ${a.member_label || 'a member'}`;
+        case 'member_restore': return `restored ${a.member_label || 'a member'}`;
+        case 'member_create': return `added ${a.member_label || 'a new member'}`;
+        case 'import': return 'imported a CSV';
+        case 'team_add': return `added ${a.member_label} to the team`;
+        case 'team_deactivate': return `deactivated ${a.member_label}`;
+        case 'team_activate': return `activated ${a.member_label}`;
+        case 'team_delete': return `removed ${a.member_label} from the team`;
+        case 'team_restore': return `restored ${a.member_label} to the team`;
+        case 'team_make_admin': return `made ${a.member_label} an admin`;
+        case 'team_make_member': return `made ${a.member_label} a team member`;
+        case 'password_reset': return `reset the password of ${a.member_label}`;
         default: return a.action;
     }
 }
 
 function timeAgo(iso) {
     const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
-    if (s < 60) return 'abhi';
-    if (s < 3600) return `${Math.floor(s / 60)} min pehle`;
-    if (s < 86400) return `${Math.floor(s / 3600)} ghante pehle`;
+    if (s < 60) return 'just now';
+    if (s < 3600) return `${Math.floor(s / 60)} min ago`;
+    if (s < 86400) return `${Math.floor(s / 3600)} hr ago`;
     return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 }
 
@@ -44,7 +44,7 @@ export default function NotificationBell() {
             const res = await authFetch('/api/notifications');
             const data = await res.json();
             if (data.success) setItems(data.items);
-        } catch { /* bell optional hai, error ignore */ }
+        } catch { /* the bell is optional, ignore errors */ }
     };
 
     useEffect(() => {
@@ -89,7 +89,7 @@ export default function NotificationBell() {
                 <div className="td-bell-panel">
                     <h3>Notifications</h3>
                     {items.length === 0 ? (
-                        <p className="td-muted td-small">Abhi tak koi activity nahi hai.</p>
+                        <p className="td-muted td-small">No activity yet.</p>
                     ) : (
                         <ul>
                             {items.map((a) => (

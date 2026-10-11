@@ -1,21 +1,21 @@
 # Team Management — Setup
 
-## 1. Database (ek baar)
-Supabase → SQL Editor → `supabase/team-management.sql` ka poora content paste karke **Run** karo.
+## 1. Database (one time)
+Supabase → SQL Editor → paste the full content of `supabase/team-management.sql` and click **Run**.
 
-Yeh banata hai:
-- `team_members` — naam, email, password (hash), active/inactive
-- `member_activity` — kaun, kab, kis member par kya kiya
-- `members.reviewed_by` — last review kisne kiya
+This creates:
+- `team_members` — name, email, password (hash), active/inactive
+- `member_activity` — who did what to which member, and when
+- `members.reviewed_by` — who did the last review
 
-## 2. Package install
+## 2. Install packages
 ```
 npm install
 ```
-(`bcryptjs` naya add hua hai, password hash ke liye.)
+(`bcryptjs` was newly added, for password hashing.)
 
 ## 3. Env
-Koi naya env variable nahi chahiye. `ADMIN_EMAIL` / `ADMIN_PASSWORD` wala login pehle jaisa kaam karega — wahi main admin hai.
+No new env variable is needed. The `ADMIN_EMAIL` / `ADMIN_PASSWORD` login works as before — that is the main admin.
 
 ## 4. Deploy
 ```
@@ -23,15 +23,15 @@ git add .
 git commit -m "team management"
 git push
 ```
-Vercel apne aap deploy kar dega.
+Vercel deploys it automatically.
 
-## Kaise use karein
-1. Admin login → dashboard par **Add Member** → naam + email.
-2. Password apne aap banega aur sirf ek baar dikhega → **Copy WhatsApp message** se member ko bhej do.
-3. Member usi login page (`/`) par apne email + password se login karega.
-4. Member jo bhi Approve / Reject / Need Review / Delete karega, sab log hoga.
-5. Sidebar mein member ke **View** se uski poori activity date ke hisaab se dikhegi.
-6. Password bhool gaya → View page → **Reset password**. Kisi ko hatana hai → **Deactivate** (turant logout ho jaata hai).
+## How to use
+1. Admin login → **Add Member** on the dashboard → name + email.
+2. The password is generated automatically and shown only once → send it to the member with **Copy WhatsApp message**.
+3. The member logs in on the same login page (`/`) with their email + password.
+4. Every Approve / Reject / Need Review / Delete a member does is logged.
+5. A member's **View** in the sidebar shows all their activity by date.
+6. Forgot password → View page → **Reset password**. To remove someone → **Deactivate** (they are logged out immediately).
 
 ## Admin vs team member
 | | Admin | Team member |
@@ -39,8 +39,8 @@ Vercel apne aap deploy kar dega.
 | Stat cards, members list, status change | ✓ | ✓ |
 | Import CSV, member delete | ✓ | ✗ |
 | Team sidebar, Add Member, Reset, Deactivate | ✓ | ✗ |
-| Apna activity page | – | ✓ (`/admin/team/<apna id>`) |
+| Own activity page | – | ✓ (`/admin/team/<own id>`) |
 
 ## Note
-- Activity log aaj se shuru hoga; purane actions ka record nahi hai.
-- Main admin (.env wala) ke actions "Admin" naam se log hote hain, woh sidebar mein nahi dikhta.
+- The activity log starts from today; older actions are not recorded.
+- Actions by the main admin (the .env login) are logged under the name "Admin", and they do not appear in the sidebar.

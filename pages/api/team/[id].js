@@ -23,16 +23,16 @@ export default async function handler(req, res) {
     } else {
         const { data, error: mErr } = await supabase.from('team_members').select('*').eq('id', id).maybeSingle();
         if (mErr) return res.status(500).json({ success: false, message: mErr.message });
-        if (!data) return res.status(404).json({ success: false, message: 'Team member nahi mila' });
+        if (!data) return res.status(404).json({ success: false, message: 'Team member not found' });
         member = publicMember(data);
     }
 
     if (req.method === 'GET') {
-        if (member.deleted_at) return res.status(404).json({ success: false, message: 'Team member nahi mila' });
+        if (member.deleted_at) return res.status(404).json({ success: false, message: 'Team member not found' });
 
         const from = req.query.from ? new Date(req.query.from) : new Date(Date.now() - 24 * 3600 * 1000);
         const to = req.query.to ? new Date(req.query.to) : new Date();
-        if (isNaN(from) || isNaN(to)) return res.status(400).json({ success: false, message: 'Galat date' });
+        if (isNaN(from) || isNaN(to)) return res.status(400).json({ success: false, message: 'Invalid date' });
 
         let q = supabase
             .from('member_activity')
@@ -57,7 +57,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-        if (!isAdmin(user)) return res.status(403).json({ success: false, message: 'Sirf admin yeh kar sakta hai' });
+        if (!isAdmin(user)) return res.status(403).json({ success: false, message: 'Only an admin can do this' });
         if (isMain) return res.status(400).json({ success: false, message: 'The main admin cannot be changed from here' });
         if (user.id === id) return res.status(400).json({ success: false, message: 'You cannot do this on your own account' });
 

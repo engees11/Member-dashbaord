@@ -21,7 +21,7 @@ export default function PasswordReveal({ name, email, phone, password }) {
 
     return (
         <div className="td-reveal">
-            <p className="td-reveal-note">Yeh password sirf abhi dikh raha hai. Copy karke {name} ko bhej do.</p>
+            <p className="td-reveal-note">This password is shown only once. Copy it and send it to {name}.</p>
             <div className="td-reveal-box">
                 <div>
                     <span className="td-reveal-label">{loginLabel}</span>

@@ -1,4 +1,4 @@
-// Status card: icon + bada number + label. `variant` se rang aata hai (globals.css → .td-stat-*)
+// Status card: icon + big number + label. `variant` sets the colour (globals.css → .td-stat-*)
 export default function StatCard({ title, value, variant, icon, onClick }) {
     return (
         <button type="button" className={`td-stat td-stat-${variant}`} onClick={onClick}>

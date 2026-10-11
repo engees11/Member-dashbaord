@@ -8,10 +8,10 @@ export default async function handler(req, res) {
     const email = String((req.body || {}).email || '').trim().toLowerCase();
     const password = String((req.body || {}).password || '');
     if (!email || !password) {
-        return res.status(400).json({ success: false, message: 'Email aur password dono daalo' });
+        return res.status(400).json({ success: false, message: 'Enter both email and password' });
     }
 
-    // 1) Main admin (.env wala login, pehle jaisa)
+    // 1) Main admin (the .env login, same as before)
     if (email === String(process.env.ADMIN_EMAIL || '').toLowerCase() && password === process.env.ADMIN_PASSWORD) {
         const user = { role: 'admin', name: 'Admin', email };
         return res.json({ success: true, token: signToken(user), user });
@@ -27,9 +27,9 @@ export default async function handler(req, res) {
 
         // members added with an OTP login have no password at all, so there is nothing to compare
         const ok = tm && tm.password_hash && (await bcrypt.compare(password, tm.password_hash));
-        if (!ok) return res.status(401).json({ success: false, message: 'Galat email ya password' });
+        if (!ok) return res.status(401).json({ success: false, message: 'Wrong email or password' });
         if (!tm.is_active || tm.deleted_at) {
-            return res.status(403).json({ success: false, message: 'Aapka account band hai. Admin se baat karein.' });
+            return res.status(403).json({ success: false, message: 'Your account is disabled. Please contact an admin.' });
         }
 
         const user = { role: tm.role === 'admin' ? 'admin' : 'member', id: tm.id, name: tm.name, email: tm.email };

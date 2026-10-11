@@ -35,7 +35,7 @@ export default function Admin() {
             const res = await authFetch('/api/stats');
             const data = await res.json();
             if (data.success) setStats(data.stats);
-        } catch { /* 401 par authFetch redirect kar deta hai */ }
+        } catch { /* authFetch redirects on a 401 */ }
     };
 
     useEffect(() => {
@@ -43,7 +43,7 @@ export default function Admin() {
             router.push('/');
             return;
         }
-        // Purane login (user info ke bina) ko admin maan lo; server phir bhi check karta hai
+        // Treat an old login (without user info) as admin; the server still checks
         setUser(getUser() || { role: 'admin', name: 'Admin' });
         fetchStats();
 
@@ -56,7 +56,7 @@ export default function Admin() {
                     saveUser(data.user);
                     setUser(data.user);
                 }
-            } catch { /* 401 par authFetch login par bhej deta hai */ }
+            } catch { /* authFetch sends the user to login on a 401 */ }
         })();
     }, []);
 
@@ -73,7 +73,7 @@ export default function Admin() {
             if (data.success) await fetchStats();
         } catch (err) {
             if (err.message !== 'Session expired') {
-                setImportResult({ success: false, message: 'File read ya upload nahi hui: ' + err.message });
+                setImportResult({ success: false, message: 'Could not read or upload the file: ' + err.message });
             }
         }
         setImporting(false);
@@ -92,7 +92,7 @@ export default function Admin() {
                             <span className="td-icon-chip td-icon-chip-solid"><IconGrid size={26} /></span>
                             <div>
                                 <h1>Dashboard</h1>
-                                <p>{admin ? 'Members ka status ek jagah' : `Welcome, ${user.name}`}</p>
+                                <p>{admin ? 'All member statuses in one place' : `Welcome, ${user.name}`}</p>
                             </div>
                         </div>
                         <div className="td-header-actions">
@@ -119,7 +119,7 @@ export default function Admin() {
                                 : importResult.message}
                             {importResult.errors && importResult.errors.length > 0 && (
                                 <details style={{ marginTop: 8 }}>
-                                    <summary style={{ cursor: 'pointer' }}>Details dekho</summary>
+                                    <summary style={{ cursor: 'pointer' }}>Show details</summary>
                                     <ul style={{ margin: '8px 0 0', paddingLeft: 20 }}>
                                         {importResult.errors.map((e, i) => <li key={i}>{e}</li>)}
                                     </ul>

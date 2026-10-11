@@ -6,7 +6,7 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).end();
     try {
         const { member_type, full_name, dob, phone, email, address, document } = req.body || {};
-        if (!phone) return res.json({ success: false, message: 'Phone number required hai' });
+        if (!phone) return res.json({ success: false, message: 'Phone number is required' });
 
         let document_url = null;
         if (document && document.base64) {

@@ -16,7 +16,7 @@ function Group({ title, people, activeId }) {
 
             {open && (
                 <ul className="td-team-list">
-                    {people.length === 0 && <li className="td-sidebar-empty">Koi nahi hai</li>}
+                    {people.length === 0 && <li className="td-sidebar-empty">No one yet</li>}
                     {people.map((m) => (
                         <li key={m.id} className={`td-team-row ${m.id === activeId ? 'is-active' : ''} ${m.is_active ? '' : 'is-off'}`}>
                             <Link href={`/admin/team/${m.id}`} className="td-team-link">

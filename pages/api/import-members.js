@@ -39,7 +39,7 @@ export default async function handler(req, res) {
 
     const user = await requireUser(req);
     if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
-    if (!isAdmin(user)) return res.status(403).json({ success: false, message: 'Sirf admin CSV import kar sakta hai' });
+    if (!isAdmin(user)) return res.status(403).json({ success: false, message: 'Only an admin can import a CSV' });
 
     try {
         const { csv } = req.body || {};

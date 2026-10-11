@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).end();
     try {
         const { member_id, whatsapp_number, ...rest } = req.body || {};
-        if (!whatsapp_number) return res.json({ success: false, message: 'WhatsApp number required hai' });
+        if (!whatsapp_number) return res.json({ success: false, message: 'WhatsApp number is required' });
 
         if ('pan_number' in rest) {
             const pan = normalizePan(rest.pan_number);

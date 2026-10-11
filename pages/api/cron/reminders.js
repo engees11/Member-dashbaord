@@ -19,9 +19,9 @@ export default async function handler(req, res) {
         if (!m.phone) continue;
         const link = m.member_type === 'old' ? `${base}/update` : `${base}/register`;
         const message =
-            `Namaste ${m.full_name || 'Member'} ji!\n\n` +
-            `Aapka membership form abhi tak submit nahi hua hai. ` +
-            `Kripya jald se jald form bharein:\n${link}\n\n` +
+            `Hello ${m.full_name || 'Member'},\n\n` +
+            `Your membership form has not been submitted yet. ` +
+            `Please fill in the form as soon as possible:\n${link}\n\n` +
             `- Member Management Team`;
         try {
             await fetch('https://api.11za.in/apis/sendMessage/sendMessages', {

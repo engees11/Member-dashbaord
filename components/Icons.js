@@ -1,4 +1,4 @@
-// Chhote stroke icons (koi extra library nahi chahiye)
+// Small stroke icons (no extra library needed)
 const base = { fill: 'none', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true };
 
 const Svg = ({ size = 22, width = 2, children }) => (
@@ -61,4 +61,7 @@ export const IconChevron = (p) => (
 );
 export const IconArrowLeft = (p) => (
     <Svg width={2.2} {...p}><path d="M19 12H5" /><path d="M12 19l-7-7 7-7" /></Svg>
+);
+export const IconDownload = (p) => (
+    <Svg width={2.2} {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M7 10l5 5 5-5" /><path d="M12 15V3" /></Svg>
 );

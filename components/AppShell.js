@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import NotificationBell from './NotificationBell';
-import { IconGrid, IconUsers, IconTeam, IconTrash, IconSettings, IconLogout, IconSearch, IconMenu, IconChevron } from './Icons';
+import { IconGrid, IconUsers, IconTeam, IconTrash, IconUpload, IconDownload, IconSettings, IconLogout, IconSearch, IconMenu, IconChevron } from './Icons';
 import { authFetch, clearSession, getToken, getUser, saveUser, initials } from '../lib/session';
 
 const STATUS_LINKS = [
@@ -21,12 +21,47 @@ function PeopleGroup({ title, people, path }) {
             </button>
             {open && (
                 <div className="sh-sub">
-                    {people.length === 0 && <span className="sh-empty">Koi nahi hai</span>}
+                    {people.length === 0 && <span className="sh-empty">No one yet</span>}
                     {people.map((m) => (
                         <Link key={m.id} href={`/admin/team/${m.id}`} className={path === '/admin/team/[id]' ? '' : ''}>
                             {m.name}{m.main ? ' (Main)' : ''}{m.is_active === false ? ' (Inactive)' : ''}
                         </Link>
                     ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// Name chip in the top bar: click it to open a small menu with Settings and Logout
+function ProfileMenu({ user, admin, onLogout }) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef(null);
+
+    useEffect(() => {
+        if (!open) return undefined;
+        const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+        const onKey = (e) => e.key === 'Escape' && setOpen(false);
+        document.addEventListener('mousedown', onDown);
+        document.addEventListener('keydown', onKey);
+        return () => {
+            document.removeEventListener('mousedown', onDown);
+            document.removeEventListener('keydown', onKey);
+        };
+    }, [open]);
+
+    return (
+        <div className="sh-pm" ref={ref}>
+            <button type="button" className="sh-chip" onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open}>
+                <span className="sh-av">{initials(user.name)}</span>
+                <div><b>{user.name}</b><small>{admin ? 'Admin' : 'Team member'}</small></div>
+                <span className={`sh-chev ${open ? 'open' : ''}`}><IconChevron size={16} /></span>
+            </button>
+            {open && (
+                <div className="sh-pm-menu" role="menu">
+                    <div className="sh-pm-head"><b>{user.name}</b><small>{admin ? 'Admin' : 'Team member'}</small></div>
+                    <Link href="/admin/settings" role="menuitem" className="sh-pm-item" onClick={() => setOpen(false)}><IconSettings size={18} />Settings</Link>
+                    <button type="button" role="menuitem" className="sh-pm-item sh-pm-danger" onClick={() => { setOpen(false); onLogout(); }}><IconLogout size={18} />Logout</button>
                 </div>
             )}
         </div>
@@ -116,6 +151,8 @@ export default function AppShell({ children }) {
                     {admin && <PeopleGroup title="Team members" people={others} path={path} />}
 
                     {admin && <div className="sh-lbl">DATA</div>}
+                    {admin && <Link href="/admin/import" className={`sh-nav ${path === '/admin/import' ? 'on' : ''}`}><IconUpload size={20} />Import</Link>}
+                    {admin && <Link href="/admin/export" className={`sh-nav ${path === '/admin/export' ? 'on' : ''}`}><IconDownload size={20} />Export</Link>}
                     {admin && <Link href="/admin/deleted" className={`sh-nav ${path === '/admin/deleted' ? 'on' : ''}`}><IconTrash size={20} />Deleted</Link>}
 
                     <div className="sh-lbl">ACCOUNT</div>
@@ -137,7 +174,7 @@ export default function AppShell({ children }) {
                     </form>
                     <span className="sh-spacer" />
                     <NotificationBell />
-                    <div className="sh-chip"><span className="sh-av">{initials(user.name)}</span><div><b>{user.name}</b><small>{admin ? 'Admin' : 'Team member'}</small></div></div>
+                    <ProfileMenu user={user} admin={admin} onLogout={logout} />
                 </header>
                 <div className="sh-content">{children}</div>
             </div>

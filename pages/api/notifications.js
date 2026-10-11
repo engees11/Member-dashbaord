@@ -1,7 +1,7 @@
 import { supabase } from '../../lib/supabase';
 import { requireUser } from '../../lib/auth';
 
-// Bell icon ke liye: team ki latest activity (login chhod ke)
+// For the bell icon: the team's latest activity (excluding logins)
 export default async function handler(req, res) {
     const user = await requireUser(req);
     if (!user) return res.status(401).json({ success: false });
