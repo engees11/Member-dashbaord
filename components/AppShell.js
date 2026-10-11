@@ -118,6 +118,7 @@ export default function AppShell({ children }) {
     const others = team.filter((m) => m.role !== 'admin');
 
     const logout = () => {
+        if (!window.confirm('Are you sure you want to log out?')) return;
         clearSession();
         router.push('/');
     };

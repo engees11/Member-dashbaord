@@ -45,7 +45,7 @@ export default function Settings() {
                     <h2>Login and security</h2>
                     <p>You log in with your mobile number and an OTP on WhatsApp. No password is used.</p>
                     <div className="st-row"><span>You stay logged in on this device for</span><b>7 days</b></div>
-                    <div className="st-row"><span>Log out from this device now</span><button type="button" className="btn btn-red" onClick={() => { clearSession(); router.push('/'); }}>Logout</button></div>
+                    <div className="st-row"><span>Log out from this device now</span><button type="button" className="btn btn-red" onClick={() => { if (!window.confirm('Are you sure you want to log out?')) return; clearSession(); router.push('/'); }}>Logout</button></div>
                 </section>
             </div>
         </div>
