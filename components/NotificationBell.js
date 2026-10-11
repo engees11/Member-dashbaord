@@ -8,6 +8,7 @@ const STATUS_TEXT = { approved: 'Approve', rejected: 'Reject', need_review: 'Nee
 function describe(a) {
     switch (a.action) {
         case 'status_change': return `ne ${a.member_label || 'member'} ko ${STATUS_TEXT[a.new_status] || a.new_status} kiya`;
+        case 'member_edit': return `ne ${a.member_label || 'member'} ki details edit ki`;
         case 'member_delete': return `ne ${a.member_label || 'member'} ko delete kiya`;
         case 'member_restore': return `ne ${a.member_label || 'member'} ko wapas laaya (restore kiya)`;
         case 'member_create': return `ne ${a.member_label || 'naya member'} add kiya`;

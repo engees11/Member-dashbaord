@@ -29,7 +29,7 @@ function parseCSV(text) {
 const ALLOWED_COLUMNS = [
     'sr_no', 'membership_no', 'first_name', 'father_name', 'last_name', 'email', 'whatsapp_number',
     'birth_date', 'native_place', 'address', 'area', 'aadhaar_number',
-    'aadhaar_front_url', 'aadhaar_back_url', 'status', 'form_type',
+    'aadhaar_front_url', 'aadhaar_back_url', 'status', 'form_type', 'pan_number',
 ];
 
 const BATCH_SIZE = 300;

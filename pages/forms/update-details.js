@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { uploadDoc, validateFile } from '../../lib/supabaseClient';
 
-const TOTAL_FIELDS = 11;
+const TOTAL_FIELDS = 12;
 
 export default function UpdateDetails() {
     const router = useRouter();
@@ -10,7 +10,7 @@ export default function UpdateDetails() {
 
     const [form, setForm] = useState({
         first_name: '', father_name: '', last_name: '', email: '',
-        phone: '', dob: '', native_place: '', address: '', area: '', aadhaar_number: '',
+        phone: '', dob: '', native_place: '', address: '', area: '', aadhaar_number: '', pan_number: '',
     });
     const [front, setFront] = useState(null);
     const [back, setBack] = useState(null);
@@ -22,7 +22,7 @@ export default function UpdateDetails() {
     const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
     const filled = [
         form.first_name, form.father_name, form.last_name, form.phone,
-        form.dob, form.native_place, form.address, form.area, form.aadhaar_number, front, back,
+        form.dob, form.native_place, form.address, form.area, form.aadhaar_number, form.pan_number, front, back,
     ].filter(Boolean).length;
     const pct = Math.round((filled / TOTAL_FIELDS) * 100);
 
@@ -36,6 +36,8 @@ export default function UpdateDetails() {
         if (form.email && !emailRegex.test(form.email)) return setErr('Please enter a valid email address.');
         const phoneDigits = form.phone.replace(/\D/g, '');
         if (phoneDigits.length < 10 || phoneDigits.length > 13) return setErr('Please enter a valid WhatsApp number (10-13 digits).');
+        const pan = form.pan_number.replace(/\s/g, '').toUpperCase();
+        if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan)) return setErr('Please enter a valid PAN number. Example: ABCDE1234F');
         const e1 = validateFile(front); if (e1) return setErr('Aadhaar Front: ' + e1);
         const e2 = validateFile(back); if (e2) return setErr('Aadhaar Back: ' + e2);
         if (payment) {
@@ -62,6 +64,7 @@ export default function UpdateDetails() {
                     address: form.address,
                     area: form.area,
                     aadhaar_number: form.aadhaar_number,
+                    pan_number: pan,
                     aadhaar_front_url: frontUrl,
                     aadhaar_back_url: backUrl,
                     payment_proof_url: paymentUrl,
@@ -149,6 +152,12 @@ export default function UpdateDetails() {
             <div className="gform-q">
                 <label>Aadhaar Number<span className="req">*</span></label>
                 <input type="text" value={form.aadhaar_number} onChange={set('aadhaar_number')} placeholder="Your answer" />
+            </div>
+
+            <div className="gform-q">
+                <label>PAN Number<span className="req">*</span></label>
+                <input type="text" value={form.pan_number} onChange={(e) => setForm({ ...form, pan_number: e.target.value.toUpperCase() })} placeholder="Your answer" maxLength={10} />
+                <div style={{ fontSize: 12, color: '#4B5563', marginTop: 8 }}>Example: ABCDE1234F</div>
             </div>
 
             <div className="gform-q">

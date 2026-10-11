@@ -1,5 +1,7 @@
 import { supabase } from '../../lib/supabase';
 import { logActivity, memberLabel } from '../../lib/activity';
+import { normalizePan, isValidPan } from '../../lib/format';
+import { missingColumn } from '../../lib/teamUtil';
 
 export const config = { api: { bodyParser: { sizeLimit: '8mb' } } };
 
@@ -9,6 +11,11 @@ export default async function handler(req, res) {
         const { member_id, whatsapp_number, ...rest } = req.body || {};
         if (!whatsapp_number) return res.json({ success: false, message: 'WhatsApp number required hai' });
 
+        if ('pan_number' in rest) {
+            const pan = normalizePan(rest.pan_number);
+            if (pan && !isValidPan(pan)) return res.json({ success: false, message: 'PAN number is not valid. Example: ABCDE1234F' });
+            rest.pan_number = pan;
+        }
         const fields = { ...rest, whatsapp_number, status: 'new', updated_at: new Date().toISOString() };
         Object.keys(fields).forEach((k) => (fields[k] == null || fields[k] === '') && delete fields[k]);
 
@@ -24,12 +31,21 @@ export default async function handler(req, res) {
 
         let error;
         let savedId = existing ? existing.id : null;
-        if (existing) {
-            ({ error } = await supabase.from('members').update(fields).eq('id', existing.id));
-        } else {
-            const ins = await supabase.from('members').insert(fields).select('id').maybeSingle();
-            error = ins.error;
-            savedId = ins.data ? ins.data.id : null;
+        const save = async () => {
+            if (existing) {
+                ({ error } = await supabase.from('members').update(fields).eq('id', existing.id));
+            } else {
+                const ins = await supabase.from('members').insert(fields).select('id').maybeSingle();
+                error = ins.error;
+                savedId = ins.data ? ins.data.id : null;
+            }
+        };
+        await save();
+        if (error && fields.pan_number && missingColumn(error)) {
+            // supabase/pan-number.sql was not run yet: save everything else so the member's form is not lost
+            console.error('[submit-form] the pan_number column is missing, saved without PAN. Run supabase/pan-number.sql');
+            delete fields.pan_number;
+            await save();
         }
         if (error) return res.json({ success: false, message: error.message });
 

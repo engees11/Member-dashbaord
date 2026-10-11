@@ -2,13 +2,11 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import StatCard from '../components/StatCard';
-import TeamSidebar from '../components/TeamSidebar';
 import AddMemberModal from '../components/AddMemberModal';
-import NotificationBell from '../components/NotificationBell';
-import { authFetch, clearSession, getToken, getUser, saveUser } from '../lib/session';
+import { authFetch, getToken, getUser, saveUser } from '../lib/session';
 import {
     IconUsers, IconClock, IconCheck, IconX, IconHourglass, IconFile, IconStar,
-    IconGrid, IconUpload, IconUserPlus, IconLogout, IconTrash,
+    IconGrid, IconUpload, IconUserPlus, IconTrash,
 } from '../components/Icons';
 
 const CARDS = [
@@ -26,9 +24,6 @@ export default function Admin() {
     const router = useRouter();
     const [user, setUser] = useState(null);
     const [stats, setStats] = useState(null);
-    const [team, setTeam] = useState([]);
-    const [mainAdmin, setMainAdmin] = useState(null);
-    const [teamLoading, setTeamLoading] = useState(true);
     const [importing, setImporting] = useState(false);
     const [importResult, setImportResult] = useState(null);
     const [addOpen, setAddOpen] = useState(false);
@@ -43,29 +38,14 @@ export default function Admin() {
         } catch { /* 401 par authFetch redirect kar deta hai */ }
     };
 
-    const fetchTeam = async () => {
-        setTeamLoading(true);
-        try {
-            const res = await authFetch('/api/team');
-            const data = await res.json();
-            if (data.success) {
-                setTeam(data.team);
-                setMainAdmin(data.main || null);
-            }
-        } catch { /* ignore */ }
-        setTeamLoading(false);
-    };
-
     useEffect(() => {
         if (!getToken()) {
             router.push('/');
             return;
         }
         // Purane login (user info ke bina) ko admin maan lo; server phir bhi check karta hai
-        const u = getUser() || { role: 'admin', name: 'Admin' };
-        setUser(u);
+        setUser(getUser() || { role: 'admin', name: 'Admin' });
         fetchStats();
-        if (u.role === 'admin') fetchTeam();
 
         // The role can change after login (someone made you admin): ask the server and refresh
         (async () => {
@@ -75,16 +55,10 @@ export default function Admin() {
                 if (data.success && data.user) {
                     saveUser(data.user);
                     setUser(data.user);
-                    if (data.user.role === 'admin' && u.role !== 'admin') fetchTeam();
                 }
             } catch { /* 401 par authFetch login par bhej deta hai */ }
         })();
     }, []);
-
-    const logout = () => {
-        clearSession();
-        router.push('/');
-    };
 
     const handleImportFile = async (e) => {
         const file = e.target.files[0];
@@ -110,17 +84,15 @@ export default function Admin() {
 
     return (
         <div className="td-page">
-            <Head><title>Team Management Dashboard</title></Head>
-            <div className="td-layout">
-                {admin && <TeamSidebar team={team} main={mainAdmin} loading={teamLoading} />}
-
+            <Head><title>Dashboard</title></Head>
+            <div className="td-layout td-layout-solo">
                 <main className="td-main">
                     <header className="td-header">
                         <div className="td-header-title">
                             <span className="td-icon-chip td-icon-chip-solid"><IconGrid size={26} /></span>
                             <div>
-                                <h1>Team Management Dashboard</h1>
-                                <p>{admin ? 'Team members aur unka kaam ek jagah' : `Welcome, ${user.name}`}</p>
+                                <h1>Dashboard</h1>
+                                <p>{admin ? 'Members ka status ek jagah' : `Welcome, ${user.name}`}</p>
                             </div>
                         </div>
                         <div className="td-header-actions">
@@ -137,11 +109,6 @@ export default function Admin() {
                                     Add Team Member
                                 </button>
                             )}
-                            <NotificationBell />
-                            <button type="button" className="td-btn td-btn-gray" onClick={logout}>
-                                <IconLogout size={18} />
-                                Logout
-                            </button>
                         </div>
                     </header>
 
@@ -179,7 +146,7 @@ export default function Admin() {
             <AddMemberModal
                 open={addOpen}
                 onClose={() => setAddOpen(false)}
-                onAdded={() => fetchTeam()}
+                onAdded={() => window.dispatchEvent(new Event('team-changed'))}
             />
         </div>
     );

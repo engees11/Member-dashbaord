@@ -11,6 +11,7 @@ Supabase -> SQL Editor -> paste and Run:
 2. `supabase/otp-and-timeline.sql`
 3. `supabase/soft-delete.sql` (for Delete + Restore of members)
 4. `supabase/team-roles-and-delete.sql` (for Admin / Team member roles and Delete + Restore of team members)
+5. `supabase/pan-number.sql` (PAN number and membership number columns)
 
 ## 2. WhatsApp OTP template (11za)
 Create ONE template in 11za (type AUTHENTICATION / OTP). It is used for every member, the app fills in a new OTP each time.
@@ -90,4 +91,12 @@ What the lines mean:
 - `sending to 11za: template=... language=...` -> the request was made to 11za.
 - `11za replied HTTP ...: {...}` -> what 11za answered. A refusal also prints `11za OTP send failed`.
 - `asked again too soon` / `hourly limit` -> the 60 second / 5 per hour rule.
+
+## 10. Members: membership no., PAN, edit, export, Indian dates
+- Members list has a **Mem. No.** column, and the search (page and top bar) also finds a membership number.
+- **PAN** is asked in the Full Details form only (after Aadhaar number, required, 5 letters + 4 digits + 1 letter). It shows in the member's details and in the edit form. Needs `supabase/pan-number.sql` once; until then the form still saves everything except PAN.
+- **Edit details** (member -> View): any logged-in team member can fix a member's details. Mobile and membership no. cannot repeat. Every edit is written to the activity log with the changed fields.
+- **Add Member** and **Export** (Members page, top right) are admin only. Export gives an Excel (.xlsx) or CSV file of all members, optionally with deleted ones. Mobile and Aadhaar numbers stay whole.
+- Birth date shows as **DD/MM/YYYY** everywhere (lists, details, edit form, export).
+- Left menu: Dashboard, Members, Team (Admin / Team members), Deleted, Settings, Logout. Import CSV stays on the Dashboard.
 
