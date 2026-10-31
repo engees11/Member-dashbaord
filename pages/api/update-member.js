@@ -24,6 +24,12 @@ export default async function handler(req, res) {
         const cleaned = cleanMemberInput(body, { existing });
         if (cleaned.error) return res.status(400).json({ success: false, message: cleaned.error });
 
+        if ('form_type' in body) {
+            const ft = String(body.form_type || '');
+            if (!['details_update', 'aadhaar_update', ''].includes(ft)) return res.status(400).json({ success: false, message: 'Choose a valid section' });
+            cleaned.fields.form_type = ft || null;
+        }
+
         // only what really changed
         const changed = {};
         for (const [k, v] of Object.entries(cleaned.fields)) {

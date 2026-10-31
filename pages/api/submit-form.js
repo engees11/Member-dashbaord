@@ -9,14 +9,15 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).end();
     try {
         const { member_id, whatsapp_number, ...rest } = req.body || {};
-        if (!whatsapp_number) return res.json({ success: false, message: 'WhatsApp number is required' });
+        if (!whatsapp_number) return res.json({ success: false, message: 'WhatsApp number required hai' });
 
         if ('pan_number' in rest) {
             const pan = normalizePan(rest.pan_number);
             if (pan && !isValidPan(pan)) return res.json({ success: false, message: 'PAN number is not valid. Example: ABCDE1234F' });
             rest.pan_number = pan;
         }
-        const fields = { ...rest, whatsapp_number, status: 'new', updated_at: new Date().toISOString() };
+        const nowIso = new Date().toISOString();
+        const fields = { ...rest, whatsapp_number, status: 'new', updated_at: nowIso, submitted_at: nowIso };
         Object.keys(fields).forEach((k) => (fields[k] == null || fields[k] === '') && delete fields[k]);
 
         let existing = null;

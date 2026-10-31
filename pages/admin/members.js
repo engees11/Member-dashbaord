@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { getUser, clearSession } from '../../lib/session';
+import StatusTimeline from '../../components/StatusTimeline';
 import MemberForm from '../../components/MemberForm';
 import { fmtDate } from '../../lib/format';
-import { searchMembers, dmy } from '../../lib/memberSearch';
+import { sortMembers, applyAddedFilter, isNewMember } from '../../lib/memberFilters';
 
 const LABELS = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected', expired: 'Expired', new: 'New', need_review: 'Need Review' };
 const fullName = (m) => [m.first_name, m.father_name, m.last_name].filter(Boolean).join(' ');
@@ -16,6 +17,7 @@ export default function MembersList() {
     const [members, setMembers] = useState([]);
     const [tab, setTab] = useState('aadhaar_update');
     const [search, setSearch] = useState('');
+    const [selected, setSelected] = useState(null);
     const [loading, setLoading] = useState(true);
     const [actionMsg, setActionMsg] = useState('');
 
@@ -41,6 +43,8 @@ export default function MembersList() {
 
     const isAdmin = () => (getUser() || { role: 'admin' }).role === 'admin';
 
+    const [sort, setSort] = useState('latest');
+    const [added, setAdded] = useState('any');
     const [formOpen, setFormOpen] = useState(false);
     const [editTarget, setEditTarget] = useState(null);
     const [exportOpen, setExportOpen] = useState(false);
@@ -80,31 +84,70 @@ export default function MembersList() {
         setExporting(false);
     };
 
-    const openMember = (m) => router.push(`/admin/members/${m.id}?from=${status}`);
-    const editMember = (m) => { setEditTarget(m); setFormOpen(true); };
-    const rowActions = (m) => (
-        <div style={{ display: 'flex', gap: 6 }}>
-            <button className="btn btn-blue btn-sm" onClick={() => openMember(m)}>View</button>
-            <button className="btn btn-gray btn-sm" onClick={() => editMember(m)}>Edit</button>
-        </div>
-    );
+    const updateStatus = async (id, newStatus) => {
+        let note = '';
+        if (newStatus === 'rejected' || newStatus === 'need_review') {
+            const reply = prompt(newStatus === 'rejected' ? 'Reject kyun kar rahe ho? (optional)' : 'Review ki wajah? (optional)', '');
+            if (reply === null) return;
+            note = reply.trim();
+        }
+        setActionMsg('');
+        try {
+            const res = await fetch('/api/update-status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
+                body: JSON.stringify({ id, status: newStatus, note }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                setSelected((prev) => (prev ? { ...prev, status: newStatus } : prev));
+                await fetchData();
+            } else {
+                setActionMsg(data.message || 'Could not update status.');
+            }
+        } catch {
+            setActionMsg('Network error while updating status.');
+        }
+    };
+
+    const deleteMember = async (id) => {
+        if (!confirm('This member will move to the Deleted list. You can restore them from there. Delete?')) return;
+        setActionMsg('');
+        try {
+            const res = await fetch('/api/delete-member', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
+                body: JSON.stringify({ id }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                setSelected(null);
+                await fetchData();
+            } else {
+                setActionMsg(data.message || 'Could not delete member.');
+            }
+        } catch {
+            setActionMsg('Network error while deleting member.');
+        }
+    };
 
     const byStatus = members.filter((m) => status === 'all' || m.status === status);
     const byTab = byStatus.filter((m) => rowType(m) === tab);
-    // search runs across all three tabs, so each tab button can show how many matches it has
-    const searching = search.trim() !== '';
-    const searched = searching ? searchMembers(byStatus, search) : byStatus;
-    const filtered = searched.filter((m) => rowType(m) === tab);
+    const searched = byTab.filter((m) => {
+        if (!search) return true;
+        const q = search.toLowerCase();
+        return (
+            fullName(m).toLowerCase().includes(q) ||
+            (m.whatsapp_number || '').includes(q.replace(/\s/g, '')) ||
+            (m.membership_no || '').toLowerCase().includes(q) ||
+            (m.email || '').toLowerCase().includes(q)
+        );
+    });
+    const filtered = sortMembers(applyAddedFilter(searched, added), sort);
 
-    const aadhaarCount = searched.filter((m) => rowType(m) === 'aadhaar_update').length;
-    const detailsCount = searched.filter((m) => rowType(m) === 'details_update').length;
-    const notSubmittedCount = searched.filter((m) => rowType(m) === 'not_submitted').length;
-
-    // if the current tab has no match but another tab does, jump to the tab of the best match
-    useEffect(() => {
-        if (!searching || loading || filtered.length > 0 || searched.length === 0) return;
-        setTab(rowType(searched[0]));
-    }, [search, members, status, loading]);
+    const aadhaarCount = byStatus.filter((m) => rowType(m) === 'aadhaar_update').length;
+    const detailsCount = byStatus.filter((m) => rowType(m) === 'details_update').length;
+    const notSubmittedCount = byStatus.filter((m) => rowType(m) === 'not_submitted').length;
 
     return (
         <div className="page">
@@ -136,6 +179,55 @@ export default function MembersList() {
 
             {actionMsg && <div className="msg msg-err" style={{ marginBottom: 16 }}>{actionMsg}</div>}
 
+            {selected && (
+                <div className="table-card detail-view" style={{ marginBottom: 24 }}>
+                    <div className="table-head">
+                        <div>
+                            <h3>{fullName(selected) || selected.email || 'Member detail'}</h3>
+                            <p>Full record and Aadhaar images</p>
+                        </div>
+                        <button className="btn btn-gray btn-sm" onClick={() => setSelected(null)}>Back</button>
+                    </div>
+                    <div className="detail-grid">
+                        {rowType(selected) !== 'aadhaar_update' && (
+                            <>
+                                <div className="item"><b>First name</b>{selected.first_name || '-'}</div>
+                                <div className="item"><b>Father name</b>{selected.father_name || '-'}</div>
+                                <div className="item"><b>Last name</b>{selected.last_name || '-'}</div>
+                                <div className="item"><b>Birth date</b>{fmtDate(selected.birth_date)}</div>
+                                <div className="item"><b>Native place</b>{selected.native_place || '-'}</div>
+                                <div className="item"><b>Address</b>{selected.address || '-'}</div>
+                                <div className="item"><b>Area</b>{selected.area || '-'}</div>
+                            </>
+                        )}
+                        <div className="item"><b>Membership no</b>{selected.membership_no || '-'}</div>
+                        <div className="item"><b>Email</b>{selected.email || '-'}</div>
+                        <div className="item"><b>WhatsApp number</b>{selected.whatsapp_number || '-'}</div>
+                        <div className="item"><b>Aadhaar number</b>{selected.aadhaar_number || '-'}</div>
+                        <div className="item"><b>PAN number</b>{selected.pan_number || '-'}</div>
+                        <div className="item"><b>Aadhaar front</b>{selected.aadhaar_front_url ? <a href={selected.aadhaar_front_url} target="_blank" rel="noreferrer">View image</a> : 'Not uploaded'}</div>
+                        <div className="item"><b>Aadhaar back</b>{selected.aadhaar_back_url ? <a href={selected.aadhaar_back_url} target="_blank" rel="noreferrer">View image</a> : 'Not uploaded'}</div>
+                    </div>
+                    <div className="tl-wrap">
+                        <b className="tl-heading">Status timeline</b>
+                        <StatusTimeline memberId={selected.id} status={selected.status} />
+                    </div>
+                    <div style={{ padding: '0 26px 24px', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                        <button className="btn btn-blue" onClick={() => { setEditTarget(selected); setFormOpen(true); }}>Edit details</button>
+                        <button className="btn btn-green" disabled={selected.status === 'approved'} onClick={() => updateStatus(selected.id, 'approved')}>Approve</button>
+                        <button className="btn btn-red" disabled={selected.status === 'rejected'} onClick={() => updateStatus(selected.id, 'rejected')}>Reject</button>
+                        <button className="btn btn-gray" disabled={selected.status === 'expired'} onClick={() => updateStatus(selected.id, 'expired')}>Mark expired</button>
+                        <button className="btn btn-gray" disabled={selected.status === 'need_review'} onClick={() => updateStatus(selected.id, 'need_review')}>Need Review</button>
+                        {selected.status !== 'pending' && (
+                            <button className="btn btn-gray" onClick={() => updateStatus(selected.id, 'pending')}>Mark pending</button>
+                        )}
+                        {isAdmin() && (
+                            <button className="btn btn-red" onClick={() => deleteMember(selected.id)} style={{ marginLeft: 'auto' }}>Delete member</button>
+                        )}
+                    </div>
+                </div>
+            )}
+
             <div className="table-card">
                 <div className="table-head" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 14 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
@@ -159,9 +251,21 @@ export default function MembersList() {
                                 Not Submitted ({notSubmittedCount})
                             </button>
                         </div>
-                        <input className="searchbar" placeholder="Search membership no., name, mobile, Aadhaar, date (DD/MM/YYYY)" value={search} onChange={(e) => setSearch(e.target.value)} />
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                            <select className="filter-sel" aria-label="Sort" value={sort} onChange={(e) => setSort(e.target.value)}>
+                                <option value="latest">Latest first</option>
+                                <option value="oldest">Oldest first</option>
+                            </select>
+                            <select className="filter-sel" aria-label="Added" value={added} onChange={(e) => setAdded(e.target.value)}>
+                                <option value="any">Added: any time</option>
+                                <option value="today">Added: today</option>
+                                <option value="7">Added: last 7 days</option>
+                                <option value="30">Added: last 30 days</option>
+                            </select>
+                            <input className="searchbar" placeholder="Search name, mobile, membership no." value={search} onChange={(e) => setSearch(e.target.value)} />
+                        </div>
                     </div>
-                    <p style={{ margin: 0, fontSize: 13, color: '#64748b' }}>{searching ? `${filtered.length} ${filtered.length === 1 ? 'match' : 'matches'} for "${search.trim()}"` : `${filtered.length} records`}</p>
+                    <p style={{ margin: 0, fontSize: 13, color: '#64748b' }}>{filtered.length} records</p>
                 </div>
 
                 <div className="table-wrap">
@@ -179,11 +283,11 @@ export default function MembersList() {
                                     filtered.map((m) => (
                                         <tr key={m.id}>
                                             <td><b>{m.membership_no || '-'}</b></td>
-                                            <td>{m.email || '-'}</td>
+                                            <td>{m.email || '-'}{isNewMember(m) && <span className="new-tag">NEW</span>}</td>
                                             <td>{m.whatsapp_number || '-'}</td>
-                                            <td>{dmy(m.submitted_at || m.created_at) || '-'}</td>
+                                            <td>{m.submitted_at ? new Date(m.submitted_at).toLocaleDateString() : (m.created_at ? new Date(m.created_at).toLocaleDateString() : '-')}</td>
                                             <td><span className={`badge b-${m.status}`}>{LABELS[m.status] || m.status}</span></td>
-                                            <td>{rowActions(m)}</td>
+                                            <td><button className="btn btn-blue btn-sm" onClick={() => setSelected(m)}>View</button></td>
                                         </tr>
                                     ))
                                 )}
@@ -205,15 +309,15 @@ export default function MembersList() {
                                     filtered.map((m) => (
                                         <tr key={m.id}>
                                             <td><b>{m.membership_no || '-'}</b></td>
-                                            <td>{fullName(m) || '-'}</td>
+                                            <td>{fullName(m) || '-'}{isNewMember(m) && <span className="new-tag">NEW</span>}</td>
                                             <td>{m.whatsapp_number || '-'}</td>
                                             <td>{m.email || '-'}</td>
                                             <td>{fmtDate(m.birth_date)}</td>
                                             <td>{m.area || '-'}</td>
                                             <td>{m.aadhaar_number || '-'}</td>
-                                            <td>{dmy(m.submitted_at || m.created_at) || '-'}</td>
+                                            <td>{m.submitted_at ? new Date(m.submitted_at).toLocaleDateString() : (m.created_at ? new Date(m.created_at).toLocaleDateString() : '-')}</td>
                                             <td><span className={`badge b-${m.status}`}>{LABELS[m.status] || m.status}</span></td>
-                                            <td>{rowActions(m)}</td>
+                                            <td><button className="btn btn-blue btn-sm" onClick={() => setSelected(m)}>View</button></td>
                                         </tr>
                                     ))
                                 )}
@@ -235,13 +339,13 @@ export default function MembersList() {
                                     filtered.map((m) => (
                                         <tr key={m.id}>
                                             <td><b>{m.membership_no || '-'}</b></td>
-                                            <td>{fullName(m) || '-'}</td>
+                                            <td>{fullName(m) || '-'}{isNewMember(m) && <span className="new-tag">NEW</span>}</td>
                                             <td>{m.whatsapp_number || '-'}</td>
                                             <td>{m.native_place || '-'}</td>
                                             <td>{m.area || '-'}</td>
                                             <td>{m.aadhaar_number || '-'}</td>
                                             <td><span className={`badge b-${m.status}`}>{LABELS[m.status] || m.status}</span></td>
-                                            <td>{rowActions(m)}</td>
+                                            <td><button className="btn btn-blue btn-sm" onClick={() => setSelected(m)}>View</button></td>
                                         </tr>
                                     ))
                                 )}
@@ -254,7 +358,7 @@ export default function MembersList() {
                 open={formOpen}
                 member={editTarget}
                 onClose={() => setFormOpen(false)}
-                onSaved={() => fetchData()}
+                onSaved={(m) => { if (editTarget && m) setSelected(m); fetchData(); }}
             />
         </div>
     );

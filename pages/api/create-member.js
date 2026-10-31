@@ -16,10 +16,16 @@ export default async function handler(req, res) {
         const body = req.body || {};
         if (!String(body.whatsapp_number || '').trim()) return res.status(400).json({ success: false, message: 'Mobile number is required' });
         if (!String(body.first_name || '').trim()) return res.status(400).json({ success: false, message: 'First name is required' });
+        if (!String(body.last_name || '').trim()) return res.status(400).json({ success: false, message: 'Surname is required' });
+
+        const section = body.form_type === undefined ? 'details_update' : String(body.form_type || '');
+        if (!['details_update', 'aadhaar_update', ''].includes(section)) return res.status(400).json({ success: false, message: 'Choose a valid section' });
+        const status = body.status === undefined || body.status === '' ? 'new' : String(body.status);
+        if (!['new', 'pending', 'approved', 'need_review', 'rejected', 'expired'].includes(status)) return res.status(400).json({ success: false, message: 'Choose a valid status' });
 
         const cleaned = cleanMemberInput(body);
         if (cleaned.error) return res.status(400).json({ success: false, message: cleaned.error });
-        const record = { ...cleaned.fields, form_type: 'details_update', status: 'new' };
+        const record = { ...cleaned.fields, form_type: section || null, status };
 
         const { data: samePhone } = await supabase.from('members').select('id').eq('whatsapp_number', record.whatsapp_number).limit(1).maybeSingle();
         if (samePhone) return res.status(409).json({ success: false, message: 'A member with this mobile number already exists' });
@@ -36,7 +42,7 @@ export default async function handler(req, res) {
             return res.status(500).json({ success: false, message: error.message });
         }
 
-        await logActivity(user, 'member_create', { memberId: created && created.id, memberLabel: memberLabel(record), newStatus: 'new' });
+        await logActivity(user, 'member_create', { memberId: created && created.id, memberLabel: memberLabel(record), newStatus: status });
         return res.json({ success: true, member: created || record });
     } catch (e) {
         return res.status(500).json({ success: false, message: 'Server error: ' + e.message });

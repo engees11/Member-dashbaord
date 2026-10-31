@@ -5,8 +5,10 @@ import { fmtDate } from '../lib/format';
 const EMPTY = {
     membership_no: '', first_name: '', father_name: '', last_name: '', birth_date: '', native_place: '',
     whatsapp_number: '', email: '', address: '', area: '', aadhaar_number: '', pan_number: '',
+    form_type: 'details_update', status: 'new',
 };
 const phoneForForm = (v) => (/^91\d{10}$/.test(String(v || '')) ? String(v).slice(2) : String(v || ''));
+const Star = () => <span className="mf-star" aria-hidden="true">*</span>;
 
 // One form for both: Add Member (member = null) and Edit member
 export default function MemberForm({ open, member, onClose, onSaved }) {
@@ -32,6 +34,8 @@ export default function MemberForm({ open, member, onClose, onSaved }) {
             area: member.area || '',
             aadhaar_number: member.aadhaar_number || '',
             pan_number: member.pan_number || '',
+            form_type: member.form_type || '',
+            status: member.status || 'new',
         } : EMPTY);
         const onKey = (e) => e.key === 'Escape' && onClose();
         document.addEventListener('keydown', onKey);
@@ -46,12 +50,14 @@ export default function MemberForm({ open, member, onClose, onSaved }) {
         e.preventDefault();
         setErr('');
         if (!f.first_name.trim()) return setErr('First name is required');
+        if (!editing && !f.last_name.trim()) return setErr('Surname is required');
         if (f.whatsapp_number.replace(/\D/g, '').length < 10) return setErr('Enter the 10-digit mobile number');
         setSaving(true);
         try {
+            const { status, ...rest } = f; // status is chosen only when adding; later use the Approve / Reject buttons
             const res = await authFetch(editing ? '/api/update-member' : '/api/create-member', {
                 method: 'POST',
-                body: editing ? { id: member.id, ...f } : f,
+                body: editing ? { id: member.id, ...rest } : f,
             });
             const data = await res.json();
             if (data.success) {
@@ -75,21 +81,46 @@ export default function MemberForm({ open, member, onClose, onSaved }) {
                 </div>
                 <form onSubmit={submit} className="td-form">
                     {err && <div className="msg msg-err">{err}</div>}
+                    <p className="mf-note"><Star /> means required. Everything else can be left empty.</p>
                     <div className="mf-grid">
+                        <div className="mf-h">LIST</div>
+                        <div className="td-field">
+                            <label htmlFor="mf-ft">Section</label>
+                            <select id="mf-ft" value={f.form_type} onChange={set('form_type')}>
+                                <option value="details_update">Full Details (Details Update tab)</option>
+                                <option value="aadhaar_update">Aadhaar only (Aadhaar Update tab)</option>
+                                <option value="">Not submitted yet (Not Submitted tab)</option>
+                            </select>
+                        </div>
+                        {!editing && (
+                            <div className="td-field">
+                                <label htmlFor="mf-st">Status</label>
+                                <select id="mf-st" value={f.status} onChange={set('status')}>
+                                    <option value="new">New</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="approved">Approved</option>
+                                    <option value="need_review">Need Review</option>
+                                    <option value="rejected">Rejected</option>
+                                    <option value="expired">Expired</option>
+                                </select>
+                            </div>
+                        )}
+
                         <div className="mf-h">MEMBERSHIP</div>
-                        <div className="td-field mf-full"><label htmlFor="mf-no">Membership No.</label><input id="mf-no" value={f.membership_no} onChange={set('membership_no')} placeholder="Leave empty if not given yet" /></div>
+                        <div className="td-field mf-full"><label htmlFor="mf-no">Membership No.</label><input id="mf-no" value={f.membership_no} onChange={set('membership_no')} placeholder="Leave empty if not given yet" /><span className="mf-hint">Each membership number can be used for one member only.</span></div>
 
                         <div className="mf-h">PERSONAL</div>
-                        <div className="td-field"><label htmlFor="mf-fn">First name</label><input id="mf-fn" value={f.first_name} onChange={set('first_name')} /></div>
+                        <div className="td-field"><label htmlFor="mf-fn">First name <Star /></label><input id="mf-fn" value={f.first_name} onChange={set('first_name')} required /></div>
                         <div className="td-field"><label htmlFor="mf-fa">Father name</label><input id="mf-fa" value={f.father_name} onChange={set('father_name')} /></div>
-                        <div className="td-field"><label htmlFor="mf-ln">Surname</label><input id="mf-ln" value={f.last_name} onChange={set('last_name')} /></div>
-                        <div className="td-field"><label htmlFor="mf-dob">Birth date (DD/MM/YYYY)</label><input id="mf-dob" value={f.birth_date} onChange={set('birth_date')} placeholder="17/09/1992" /></div>
+                        <div className="td-field"><label htmlFor="mf-ln">Surname {!editing && <Star />}</label><input id="mf-ln" value={f.last_name} onChange={set('last_name')} required={!editing} /></div>
+                        <div className="td-field"><label htmlFor="mf-dob">Birth date</label><input id="mf-dob" value={f.birth_date} onChange={set('birth_date')} placeholder="17/09/1992" /><span className="mf-hint">DD/MM/YYYY</span></div>
                         <div className="td-field mf-full"><label htmlFor="mf-np">Native place</label><input id="mf-np" value={f.native_place} onChange={set('native_place')} /></div>
 
                         <div className="mf-h">CONTACT</div>
                         <div className="td-field">
-                            <label htmlFor="mf-ph">Mobile number</label>
-                            <div className="otp-phone"><span className="otp-cc">+91</span><input id="mf-ph" inputMode="numeric" value={f.whatsapp_number} onChange={(e) => setF({ ...f, whatsapp_number: e.target.value.replace(/[^\d]/g, '') })} placeholder="98765 43210" /></div>
+                            <label htmlFor="mf-ph">Mobile number <Star /></label>
+                            <div className="otp-phone"><span className="otp-cc">+91</span><input id="mf-ph" inputMode="numeric" value={f.whatsapp_number} onChange={(e) => setF({ ...f, whatsapp_number: e.target.value.replace(/[^\d]/g, '') })} placeholder="98765 43210" required /></div>
+                            <span className="mf-hint">10 digits. One number can belong to one member only.</span>
                         </div>
                         <div className="td-field"><label htmlFor="mf-em">Email</label><input id="mf-em" value={f.email} onChange={set('email')} placeholder="name@example.com" /></div>
                         <div className="td-field mf-full"><label htmlFor="mf-ad">Address</label><input id="mf-ad" value={f.address} onChange={set('address')} /></div>
@@ -97,7 +128,7 @@ export default function MemberForm({ open, member, onClose, onSaved }) {
 
                         <div className="mf-h">DOCUMENTS</div>
                         <div className="td-field"><label htmlFor="mf-aa">Aadhaar number</label><input id="mf-aa" value={f.aadhaar_number} onChange={set('aadhaar_number')} /></div>
-                        <div className="td-field"><label htmlFor="mf-pan">PAN number</label><input id="mf-pan" value={f.pan_number} onChange={(e) => setF({ ...f, pan_number: e.target.value.toUpperCase() })} placeholder="ABCDE1234F" maxLength={10} /></div>
+                        <div className="td-field"><label htmlFor="mf-pan">PAN number</label><input id="mf-pan" value={f.pan_number} onChange={(e) => setF({ ...f, pan_number: e.target.value.toUpperCase() })} placeholder="ABCDE1234F" maxLength={10} /><span className="mf-hint">5 letters, 4 digits, 1 letter</span></div>
                     </div>
                     <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                         <button type="button" className="td-btn td-btn-gray" onClick={onClose}>Cancel</button>

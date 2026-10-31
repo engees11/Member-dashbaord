@@ -64,23 +64,21 @@
 .st-head { padding: 26px 28px 0; }
 .st-head h1 { margin: 0; font-size: 26px; font-weight: 800; }
 @media (max-width: 900px) { .st-grid { grid-template-columns: minmax(0, 1fr); } }
-.st-grid-one { grid-template-columns: minmax(0, 720px); }
-.sh-pm { position: relative; }
-button.sh-chip { cursor: pointer; font: inherit; color: inherit; text-align: left; }
-button.sh-chip:hover { background: #F9FAFB; }
-.sh-chip .sh-chev { color: #667085; margin-left: 2px; }
-.sh-pm-menu { position: absolute; right: 0; top: calc(100% + 8px); z-index: 30; min-width: 200px; background: #fff; border: 1px solid #D0D5DD; border-radius: 12px; box-shadow: 0 12px 32px rgba(16, 24, 40, .18); padding: 6px; }
-.sh-pm-head { padding: 8px 10px 10px; border-bottom: 1px solid #EAECF0; margin-bottom: 4px; }
-.sh-pm-head b { display: block; font-size: 14px; }
-.sh-pm-head small { color: #667085; font-size: 12px; }
-.sh-pm-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border: 0; background: none; border-radius: 8px; font: inherit; font-size: 14px; color: #344054; text-decoration: none; cursor: pointer; }
-.sh-pm-item:hover { background: #F2F4F7; }
-.sh-pm-danger { color: #D92D20; }
-.sh-pm-danger:hover { background: #FEF3F2; }
-.sh-split { position: relative; }
-.sh-split .sh-nav { padding-right: 48px; }
-.sh-split-btn { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: transparent; color: #C9D3E3; cursor: pointer; }
-.sh-split-btn:hover { background: #2A384E; color: #fff; }
-.sh-split-btn.on { color: #1F2A3C; }
-.sh-split-btn.on:hover { background: #EEF2F7; color: #1F2A3C; }
-.sh-split-btn .sh-chev { margin-left: 0; }
+
+/* Colours the td-* buttons and fields need. They used to exist only inside the old dashboard wrapper,
+   so on the Members page the Add / Cancel buttons were white on white. */
+.sh-app {
+    --td-ground: #EEF1F6; --td-card: #FFFFFF; --td-ink: #15202B; --td-muted: #556173; --td-line: #EEF1F5;
+    --td-accent: #2453D6; --td-tint: #E6ECFF; --td-tint-ink: #1F3FA8; --td-gray: #5B6578;
+}
+.sh-app button, .sh-app input, .sh-app select, .sh-app textarea { font-family: inherit; }
+
+/* Add / Edit form helpers */
+.mf-star { color: #B42318; margin-left: 2px; font-weight: 800; }
+.mf-hint { font-size: 12px; color: #667085; }
+.mf-note { margin: 0; font-size: 13px; color: #475467; }
+.td-field select { height: 46px; border: 1.5px solid #D0D5DD; border-radius: 12px; padding: 0 12px; font-size: 14px; background: #fff; color: #15202B; width: 100%; }
+
+/* Members list: sort, added filter and the NEW tag */
+.filter-sel { height: 40px; border: 1px solid #D0D5DD; border-radius: 10px; padding: 0 10px; font-size: 13px; font-weight: 600; background: #fff; color: #344054; }
+.new-tag { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 99px; background: #DCFAE6; color: #067647; font-size: 11px; font-weight: 800; letter-spacing: .04em; vertical-align: middle; }
