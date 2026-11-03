@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { authFetch } from '../lib/session';
 import { fmtDate } from '../lib/format';
+import { uploadDoc, validateFile } from '../lib/supabaseClient';
 
 const EMPTY = {
     membership_no: '', first_name: '', father_name: '', last_name: '', birth_date: '', native_place: '',
@@ -16,11 +17,15 @@ export default function MemberForm({ open, member, onClose, onSaved, initial, no
     const [f, setF] = useState(EMPTY);
     const [err, setErr] = useState('');
     const [saving, setSaving] = useState(false);
+    const [front, setFront] = useState(null); // Aadhaar photos chosen in this form
+    const [back, setBack] = useState(null);
 
     useEffect(() => {
         if (!open) return undefined;
         setErr('');
         setSaving(false);
+        setFront(null);
+        setBack(null);
         setF(member ? {
             membership_no: member.membership_no || '',
             first_name: member.first_name || '',
@@ -52,12 +57,21 @@ export default function MemberForm({ open, member, onClose, onSaved, initial, no
         if (!f.first_name.trim()) return setErr('First name is required');
         if (!editing && !f.last_name.trim()) return setErr('Surname is required');
         if (f.whatsapp_number.replace(/\D/g, '').length < 10) return setErr('Enter the 10-digit mobile number');
+        for (const [file, label] of [[front, 'front'], [back, 'back']]) {
+            const bad = file ? validateFile(file) : null;
+            if (bad) return setErr(`Aadhaar ${label} photo: ${bad}`);
+        }
         setSaving(true);
         try {
+            // upload the chosen photos first, then save the member with their links
+            const phone = '91' + f.whatsapp_number.replace(/\D/g, '').slice(-10);
+            const photos = {};
+            if (front) photos.aadhaar_front_url = await uploadDoc('aadhaar-front', phone, front);
+            if (back) photos.aadhaar_back_url = await uploadDoc('aadhaar-back', phone, back);
             const { status, ...rest } = f; // status is chosen only when adding; later use the Approve / Reject buttons
             const res = await authFetch(editing ? '/api/update-member' : '/api/create-member', {
                 method: 'POST',
-                body: editing ? { id: member.id, ...rest } : f,
+                body: editing ? { id: member.id, ...rest, ...photos } : { ...f, ...photos },
             });
             const data = await res.json();
             if (data.success) {
@@ -67,7 +81,7 @@ export default function MemberForm({ open, member, onClose, onSaved, initial, no
                 setErr(data.message || 'Could not save');
             }
         } catch (e2) {
-            if (e2.message !== 'Session expired') setErr('Network error, please try again');
+            if (e2.message !== 'Session expired') setErr(String(e2.message || '').startsWith('Upload failed') ? e2.message : 'Network error, please try again');
         }
         setSaving(false);
     };
@@ -130,6 +144,16 @@ export default function MemberForm({ open, member, onClose, onSaved, initial, no
                         <div className="mf-h">DOCUMENTS</div>
                         <div className="td-field"><label htmlFor="mf-aa">Aadhaar number</label><input id="mf-aa" value={f.aadhaar_number} onChange={set('aadhaar_number')} /></div>
                         <div className="td-field"><label htmlFor="mf-pan">PAN number</label><input id="mf-pan" value={f.pan_number} onChange={(e) => setF({ ...f, pan_number: e.target.value.toUpperCase() })} placeholder="ABCDE1234F" maxLength={10} /><span className="mf-hint">5 letters, 4 digits, 1 letter</span></div>
+                        <div className="td-field mf-full">
+                            <label htmlFor="mf-front">Aadhaar front photo</label>
+                            <input id="mf-front" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(e) => setFront(e.target.files[0] || null)} />
+                            <span className="mf-hint">{member && member.aadhaar_front_url ? <>Already uploaded (<a href={member.aadhaar_front_url} target="_blank" rel="noreferrer">view</a>). Choose a file only to replace it.</> : 'Not uploaded yet. JPG, PNG, WEBP or PDF, up to 10 MB.'}</span>
+                        </div>
+                        <div className="td-field mf-full">
+                            <label htmlFor="mf-back">Aadhaar back photo</label>
+                            <input id="mf-back" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(e) => setBack(e.target.files[0] || null)} />
+                            <span className="mf-hint">{member && member.aadhaar_back_url ? <>Already uploaded (<a href={member.aadhaar_back_url} target="_blank" rel="noreferrer">view</a>). Choose a file only to replace it.</> : 'Not uploaded yet. JPG, PNG, WEBP or PDF, up to 10 MB.'}</span>
+                        </div>
                     </div>
                     <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                         <button type="button" className="td-btn td-btn-gray" onClick={onClose}>Cancel</button>

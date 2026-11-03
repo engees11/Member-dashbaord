@@ -1,14 +1,25 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { getUser, clearSession } from '../../lib/session';
 import StatusTimeline from '../../components/StatusTimeline';
 import MemberForm from '../../components/MemberForm';
 import { fmtDate } from '../../lib/format';
-import { sortMembers, applyAddedFilter, isNewMember } from '../../lib/memberFilters';
+import { sortMembers, applyAddedFilter, isNewMember, matchesSearch } from '../../lib/memberFilters';
 
 const LABELS = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected', expired: 'Expired', new: 'New', need_review: 'Need Review' };
 const fullName = (m) => [m.first_name, m.father_name, m.last_name].filter(Boolean).join(' ');
 const rowType = (m) => m.form_type || 'not_submitted';
+// the element that really scrolls (the page area, or the whole window)
+const scrollParent = (el) => {
+    let p = el && el.parentElement;
+    while (p) {
+        const s = window.getComputedStyle(p);
+        if (/(auto|scroll)/.test(s.overflowY) && p.scrollHeight > p.clientHeight) return p;
+        p = p.parentElement;
+    }
+    return document.scrollingElement || document.documentElement;
+};
+const SECTION_LABEL = { aadhaar_update: 'Aadhaar Update', details_update: 'Details Update', not_submitted: 'Not Submitted' };
 
 export default function MembersList() {
     const router = useRouter();
@@ -18,6 +29,8 @@ export default function MembersList() {
     const [tab, setTab] = useState('aadhaar_update');
     const [search, setSearch] = useState('');
     const [selected, setSelected] = useState(null);
+    const detailRef = useRef(null); // the member card that opens above the list
+    const backTo = useRef(null); // where the list was scrolled to before View was pressed
     const [loading, setLoading] = useState(true);
     const [actionMsg, setActionMsg] = useState('');
 
@@ -55,6 +68,29 @@ export default function MembersList() {
     useEffect(() => {
         if (router.query.q !== undefined) setSearch(String(router.query.q));
     }, [router.query.q]);
+
+    // View: scroll up to the member card; Back / close: return to the same place in the list
+    const openId = selected ? selected.id : null;
+    useEffect(() => {
+        if (openId) {
+            const card = detailRef.current;
+            if (!card) return;
+            const sp = scrollParent(card);
+            backTo.current = { sp, top: sp.scrollTop };
+            card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else if (backTo.current) {
+            const { sp, top } = backTo.current;
+            backTo.current = null;
+            sp.scrollTo({ top, behavior: 'smooth' });
+        }
+    }, [openId]);
+
+    // one match only: open that member straight away (no need to look for the tab)
+    useEffect(() => {
+        if (router.query.q === undefined || loading) return;
+        const hits = members.filter((m) => (status === 'all' || m.status === status) && matchesSearch(m, String(router.query.q)));
+        if (hits.length === 1) setSelected(hits[0]);
+    }, [router.query.q, loading]);
 
     const doExport = async (format) => {
         setExporting(true);
@@ -132,17 +168,10 @@ export default function MembersList() {
     };
 
     const byStatus = members.filter((m) => status === 'all' || m.status === status);
-    const byTab = byStatus.filter((m) => rowType(m) === tab);
-    const searched = byTab.filter((m) => {
-        if (!search) return true;
-        const q = search.toLowerCase();
-        return (
-            fullName(m).toLowerCase().includes(q) ||
-            (m.whatsapp_number || '').includes(q.replace(/\s/g, '')) ||
-            (m.membership_no || '').toLowerCase().includes(q) ||
-            (m.email || '').toLowerCase().includes(q)
-        );
-    });
+    // typing in the search looks in ALL tabs at once, so nobody has to open each tab to find a member
+    const searching = search.trim() !== '';
+    const byTab = searching ? byStatus : byStatus.filter((m) => rowType(m) === tab);
+    const searched = byTab.filter((m) => matchesSearch(m, search));
     const filtered = sortMembers(applyAddedFilter(searched, added), sort);
 
     const aadhaarCount = byStatus.filter((m) => rowType(m) === 'aadhaar_update').length;
@@ -180,7 +209,7 @@ export default function MembersList() {
             {actionMsg && <div className="msg msg-err" style={{ marginBottom: 16 }}>{actionMsg}</div>}
 
             {selected && (
-                <div className="table-card detail-view" style={{ marginBottom: 24 }}>
+                <div className="table-card detail-view" ref={detailRef} style={{ marginBottom: 24, scrollMarginTop: 90 }}>
                     <div className="table-head">
                         <div>
                             <h3>{fullName(selected) || selected.email || 'Member detail'}</h3>
@@ -233,19 +262,19 @@ export default function MembersList() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                             <button
-                                className={tab === 'aadhaar_update' ? 'btn btn-blue btn-sm' : 'btn btn-gray btn-sm'}
+                                className={!searching && tab === 'aadhaar_update' ? 'btn btn-blue btn-sm' : 'btn btn-gray btn-sm'}
                                 onClick={() => setTab('aadhaar_update')}
                             >
                                 Aadhaar Update ({aadhaarCount})
                             </button>
                             <button
-                                className={tab === 'details_update' ? 'btn btn-blue btn-sm' : 'btn btn-gray btn-sm'}
+                                className={!searching && tab === 'details_update' ? 'btn btn-blue btn-sm' : 'btn btn-gray btn-sm'}
                                 onClick={() => setTab('details_update')}
                             >
                                 Details Update ({detailsCount})
                             </button>
                             <button
-                                className={tab === 'not_submitted' ? 'btn btn-blue btn-sm' : 'btn btn-gray btn-sm'}
+                                className={!searching && tab === 'not_submitted' ? 'btn btn-blue btn-sm' : 'btn btn-gray btn-sm'}
                                 onClick={() => setTab('not_submitted')}
                             >
                                 Not Submitted ({notSubmittedCount})
@@ -262,14 +291,46 @@ export default function MembersList() {
                                 <option value="7">Added: last 7 days</option>
                                 <option value="30">Added: last 30 days</option>
                             </select>
-                            <input className="searchbar" placeholder="Search name, mobile, membership no." value={search} onChange={(e) => setSearch(e.target.value)} />
+                            <input
+                                className="searchbar"
+                                placeholder="Search name, mobile, membership no."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter' && filtered.length === 1) setSelected(filtered[0]); }}
+                            />
                         </div>
                     </div>
-                    <p style={{ margin: 0, fontSize: 13, color: '#64748b' }}>{filtered.length} records</p>
+                    <p style={{ margin: 0, fontSize: 13, color: '#64748b' }}>{searching ? `${filtered.length} found in all tabs (Aadhaar Update, Details Update, Not Submitted)` : `${filtered.length} records`}</p>
                 </div>
 
                 <div className="table-wrap">
-                    {tab === 'aadhaar_update' && (
+                    {searching && (
+                        <table>
+                            <thead>
+                                <tr><th>Mem. No.</th><th>Name</th><th>WhatsApp number</th><th>Section</th><th>Status</th><th>Actions</th></tr>
+                            </thead>
+                            <tbody>
+                                {loading ? (
+                                    <tr><td colSpan={6} className="empty">Loading...</td></tr>
+                                ) : filtered.length === 0 ? (
+                                    <tr><td colSpan={6} className="empty">Nothing found in any tab.</td></tr>
+                                ) : (
+                                    filtered.map((m) => (
+                                        <tr key={m.id}>
+                                            <td><b>{m.membership_no || '-'}</b></td>
+                                            <td>{fullName(m) || m.email || '-'}{isNewMember(m) && <span className="new-tag">NEW</span>}</td>
+                                            <td>{m.whatsapp_number || '-'}</td>
+                                            <td><span className="badge" style={{ background: '#E8ECF4', color: '#344054' }}>{SECTION_LABEL[rowType(m)]}</span></td>
+                                            <td><span className={`badge b-${m.status}`}>{LABELS[m.status] || m.status}</span></td>
+                                            <td><button className="btn btn-blue btn-sm" onClick={() => setSelected(m)}>View</button></td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    )}
+
+                    {!searching && tab === 'aadhaar_update' && (
                         <table>
                             <thead>
                                 <tr><th>Mem. No.</th><th>Email</th><th>WhatsApp number</th><th>Submitted date</th><th>Status</th><th>Actions</th></tr>
@@ -295,7 +356,7 @@ export default function MembersList() {
                         </table>
                     )}
 
-                    {tab === 'details_update' && (
+                    {!searching && tab === 'details_update' && (
                         <table>
                             <thead>
                                 <tr><th>Mem. No.</th><th>Name</th><th>WhatsApp number</th><th>Email</th><th>Birth date</th><th>Area</th><th>Aadhaar number</th><th>Submitted date</th><th>Status</th><th>Actions</th></tr>
@@ -325,7 +386,7 @@ export default function MembersList() {
                         </table>
                     )}
 
-                    {tab === 'not_submitted' && (
+                    {!searching && tab === 'not_submitted' && (
                         <table>
                             <thead>
                                 <tr><th>Mem. No.</th><th>Name</th><th>WhatsApp number</th><th>Native place</th><th>Area</th><th>Aadhaar number</th><th>Status</th><th>Actions</th></tr>
