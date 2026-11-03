@@ -27,7 +27,6 @@ export default function Admin() {
     const [importing, setImporting] = useState(false);
     const [importResult, setImportResult] = useState(null);
     const [addOpen, setAddOpen] = useState(false);
-    const [importMode, setImportMode] = useState('update');
 
     const admin = user && user.role === 'admin';
 
@@ -61,6 +60,19 @@ export default function Admin() {
         })();
     }, []);
 
+    const downloadSkipped = (list) => {
+        const cell = (v) => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
+        const head = ['Reason', 'Why', 'Row in file', 'Sr No', 'Membership No', 'Name', 'Mobile', 'Birth date', 'Aadhaar'];
+        const lines = (list || []).map((r) => [r.reason, r.detail, r.file_row, r.sr_no, r.membership_no, [r.first_name, r.father_name, r.last_name].filter(Boolean).join(' '), r.whatsapp_number, r.birth_date, r.aadhaar_number].map(cell).join(','));
+        const blob = new Blob(['\uFEFF' + [head.map(cell).join(','), ...lines].join('\r\n')], { type: 'text/csv;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'duplicate-rows.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    };
+
     const handleImportFile = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -69,7 +81,7 @@ export default function Admin() {
         try {
             const text = await file.text();
             // 1) a preview first: nothing is saved yet
-            const pre = await (await authFetch('/api/import-members', { method: 'POST', body: { csv: text, dryRun: true, mode: importMode } })).json();
+            const pre = await (await authFetch('/api/import-members', { method: 'POST', body: { csv: text, dryRun: true } })).json();
             if (!pre.success) {
                 setImportResult(pre);
             } else {
@@ -80,7 +92,7 @@ export default function Admin() {
                         ? `${pre.updated} existing members will get their EMPTY fields filled`
                         : `${pre.updated} existing members will be UPDATED`,
                     `${pre.unchanged} existing members have nothing new (not touched)`,
-                    `${pre.skipped} rows will be SKIPPED (duplicate or invalid)`,
+                    `${pre.skipped} rows are DUPLICATES or have a problem (not added, kept in the Duplicates list with a reason)`,
                 ];
                 if (pre.changeSummary && pre.changeSummary.length) {
                     lines.push('', 'What will change in the existing members:');
@@ -93,7 +105,7 @@ export default function Admin() {
                 lines.push('', 'Continue?');
                 // 2) only after the admin says OK
                 if (window.confirm(lines.join('\n'))) {
-                    const res = await authFetch('/api/import-members', { method: 'POST', body: { csv: text, mode: importMode } });
+                    const res = await authFetch('/api/import-members', { method: 'POST', body: { csv: text } });
                     const data = await res.json();
                     setImportResult(data);
                     if (data.success) await fetchStats();
@@ -127,12 +139,6 @@ export default function Admin() {
                         </div>
                         <div className="td-header-actions">
                             {admin && (
-                                <select className="filter-sel" aria-label="Import mode" value={importMode} onChange={(e) => setImportMode(e.target.value)} disabled={importing}>
-                                    <option value="update">Import: add new + update same entries</option>
-                                    <option value="fill">Import: add new + only fill blanks (safer)</option>
-                                </select>
-                            )}
-                            {admin && (
                                 <label className={`td-btn td-btn-soft ${importing ? 'is-busy' : ''}`}>
                                     <IconUpload size={18} />
                                     {importing ? 'Importing...' : 'Import CSV'}
@@ -151,12 +157,12 @@ export default function Admin() {
                     {importResult && (
                         <div className={`msg ${importResult.success ? 'msg-ok' : 'msg-err'}`}>
                             {importResult.success
-                                ? `Import done: ${importResult.added} added, ${importResult.updated} updated, ${importResult.unchanged} had nothing new, ${importResult.skipped} skipped (${importResult.total} rows in the file).`
+                                ? `Import done: ${importResult.added} new members added, ${importResult.updated} existing members got their missing data filled, ${importResult.unchanged} had nothing new, ${importResult.skipped} duplicates (${importResult.total} rows in the file).`
                                 : importResult.message}
                             {[
-                                ['Updated: what changed', importResult.updatedList],
+                                ['Filled in: what was added to existing members', importResult.updatedList],
                                 ['Kept as in the dashboard (the file had a different value)', importResult.keptList],
-                                ['Skipped (nothing was added or changed for these rows)', importResult.skippedList],
+                                ['Duplicates (nothing was added or changed for these rows)', importResult.skippedList],
                                 ['Notes', importResult.warnings],
                                 ['Errors', importResult.errors],
                             ].filter(([, list]) => list && list.length > 0).map(([title, list]) => (
@@ -167,6 +173,12 @@ export default function Admin() {
                                     </ul>
                                 </details>
                             ))}
+                            {importResult.success && importResult.skipped > 0 && (
+                                <div style={{ marginTop: 10, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                                    <span>{importResult.skippedSaved ? 'The duplicate rows are saved in Duplicates (left menu).' : 'The duplicate rows could not be saved there, so download them now.'}</span>
+                                    <button type="button" className="td-btn td-btn-soft" onClick={() => downloadSkipped(importResult.skippedRows)}>Download duplicate rows</button>
+                                </div>
+                            )}
                         </div>
                     )}
 

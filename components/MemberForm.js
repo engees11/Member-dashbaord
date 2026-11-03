@@ -11,7 +11,7 @@ const phoneForForm = (v) => (/^91\d{10}$/.test(String(v || '')) ? String(v).slic
 const Star = () => <span className="mf-star" aria-hidden="true">*</span>;
 
 // One form for both: Add Member (member = null) and Edit member
-export default function MemberForm({ open, member, onClose, onSaved }) {
+export default function MemberForm({ open, member, onClose, onSaved, initial, note }) {
     const editing = !!member;
     const [f, setF] = useState(EMPTY);
     const [err, setErr] = useState('');
@@ -36,11 +36,11 @@ export default function MemberForm({ open, member, onClose, onSaved }) {
             pan_number: member.pan_number || '',
             form_type: member.form_type || '',
             status: member.status || 'new',
-        } : EMPTY);
+        } : { ...EMPTY, ...(initial || {}) });
         const onKey = (e) => e.key === 'Escape' && onClose();
         document.addEventListener('keydown', onKey);
         return () => document.removeEventListener('keydown', onKey);
-    }, [open, member]);
+    }, [open, member, initial]);
 
     if (!open) return null;
 
@@ -80,6 +80,7 @@ export default function MemberForm({ open, member, onClose, onSaved }) {
                     <button type="button" className="td-close" onClick={onClose} aria-label="Close">×</button>
                 </div>
                 <form onSubmit={submit} className="td-form">
+                    {note && !editing && <div className="msg" style={{ background: '#FEF0C7', color: '#93370D' }}>{note}</div>}
                     {err && <div className="msg msg-err">{err}</div>}
                     <p className="mf-note"><Star /> means required. Everything else can be left empty.</p>
                     <div className="mf-grid">

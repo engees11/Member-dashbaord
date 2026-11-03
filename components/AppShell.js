@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import NotificationBell from './NotificationBell';
-import { IconGrid, IconUsers, IconTeam, IconTrash, IconUpload, IconDownload, IconSettings, IconLogout, IconSearch, IconMenu, IconChevron } from './Icons';
+import { IconGrid, IconUsers, IconTeam, IconTrash, IconUpload, IconDownload, IconSettings, IconLogout, IconSearch, IconMenu, IconChevron, IconFile } from './Icons';
 import { authFetch, clearSession, getToken, getUser, saveUser, initials } from '../lib/session';
 
 const STATUS_LINKS = [
@@ -188,6 +188,7 @@ export default function AppShell({ children }) {
                     {admin && <Link href="/admin/import" className={`sh-nav ${path === '/admin/import' ? 'on' : ''}`}><IconUpload size={20} />Import</Link>}
                     {admin && <Link href="/admin/export" className={`sh-nav ${path === '/admin/export' ? 'on' : ''}`}><IconDownload size={20} />Export</Link>}
                     {admin && <Link href="/admin/deleted" className={`sh-nav ${path === '/admin/deleted' ? 'on' : ''}`}><IconTrash size={20} />Deleted</Link>}
+                    {admin && <Link href="/admin/skipped" className={`sh-nav ${path === '/admin/skipped' ? 'on' : ''}`}><IconFile size={20} />Duplicates</Link>}
 
                     <div className="sh-lbl">ACCOUNT</div>
                     <Link href="/admin/settings" className={`sh-nav ${path === '/admin/settings' ? 'on' : ''}`}><IconSettings size={20} />Settings</Link>
