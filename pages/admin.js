@@ -27,6 +27,7 @@ export default function Admin() {
     const [importing, setImporting] = useState(false);
     const [importResult, setImportResult] = useState(null);
     const [addOpen, setAddOpen] = useState(false);
+    const [importMode, setImportMode] = useState('update');
 
     const admin = user && user.role === 'admin';
 
@@ -35,7 +36,7 @@ export default function Admin() {
             const res = await authFetch('/api/stats');
             const data = await res.json();
             if (data.success) setStats(data.stats);
-        } catch { /* authFetch redirects on a 401 */ }
+        } catch { /* 401 par authFetch redirect kar deta hai */ }
     };
 
     useEffect(() => {
@@ -43,7 +44,7 @@ export default function Admin() {
             router.push('/');
             return;
         }
-        // Treat an old login (without user info) as admin; the server still checks
+        // Purane login (user info ke bina) ko admin maan lo; server phir bhi check karta hai
         setUser(getUser() || { role: 'admin', name: 'Admin' });
         fetchStats();
 
@@ -56,7 +57,7 @@ export default function Admin() {
                     saveUser(data.user);
                     setUser(data.user);
                 }
-            } catch { /* authFetch sends the user to login on a 401 */ }
+            } catch { /* 401 par authFetch login par bhej deta hai */ }
         })();
     }, []);
 
@@ -67,13 +68,42 @@ export default function Admin() {
         setImportResult(null);
         try {
             const text = await file.text();
-            const res = await authFetch('/api/import-members', { method: 'POST', body: { csv: text } });
-            const data = await res.json();
-            setImportResult(data);
-            if (data.success) await fetchStats();
+            // 1) a preview first: nothing is saved yet
+            const pre = await (await authFetch('/api/import-members', { method: 'POST', body: { csv: text, dryRun: true, mode: importMode } })).json();
+            if (!pre.success) {
+                setImportResult(pre);
+            } else {
+                const lines = [
+                    `This file has ${pre.total} rows.`,
+                    `${pre.added} new members will be ADDED`,
+                    pre.mode === 'fill'
+                        ? `${pre.updated} existing members will get their EMPTY fields filled`
+                        : `${pre.updated} existing members will be UPDATED`,
+                    `${pre.unchanged} existing members have nothing new (not touched)`,
+                    `${pre.skipped} rows will be SKIPPED (duplicate or invalid)`,
+                ];
+                if (pre.changeSummary && pre.changeSummary.length) {
+                    lines.push('', 'What will change in the existing members:');
+                    pre.changeSummary.forEach((c) => lines.push(`  ${c.field}: ${c.count} members`));
+                }
+                if (pre.mode === 'fill' && pre.kept) {
+                    lines.push('', `${pre.kept} values in the file differ from the dashboard. They are KEPT as in the dashboard (safe mode):`);
+                    pre.keptSummary.forEach((c) => lines.push(`  ${c.field}: ${c.count}`));
+                }
+                lines.push('', 'Continue?');
+                // 2) only after the admin says OK
+                if (window.confirm(lines.join('\n'))) {
+                    const res = await authFetch('/api/import-members', { method: 'POST', body: { csv: text, mode: importMode } });
+                    const data = await res.json();
+                    setImportResult(data);
+                    if (data.success) await fetchStats();
+                } else {
+                    setImportResult({ success: false, message: 'Import cancelled. Nothing was saved.' });
+                }
+            }
         } catch (err) {
             if (err.message !== 'Session expired') {
-                setImportResult({ success: false, message: 'Could not read or upload the file: ' + err.message });
+                setImportResult({ success: false, message: 'File read ya upload nahi hui: ' + err.message });
             }
         }
         setImporting(false);
@@ -92,10 +122,16 @@ export default function Admin() {
                             <span className="td-icon-chip td-icon-chip-solid"><IconGrid size={26} /></span>
                             <div>
                                 <h1>Dashboard</h1>
-                                <p>{admin ? 'All member statuses in one place' : `Welcome, ${user.name}`}</p>
+                                <p>{admin ? 'Members ka status ek jagah' : `Welcome, ${user.name}`}</p>
                             </div>
                         </div>
                         <div className="td-header-actions">
+                            {admin && (
+                                <select className="filter-sel" aria-label="Import mode" value={importMode} onChange={(e) => setImportMode(e.target.value)} disabled={importing}>
+                                    <option value="update">Import: add new + update same entries</option>
+                                    <option value="fill">Import: add new + only fill blanks (safer)</option>
+                                </select>
+                            )}
                             {admin && (
                                 <label className={`td-btn td-btn-soft ${importing ? 'is-busy' : ''}`}>
                                     <IconUpload size={18} />
@@ -115,16 +151,22 @@ export default function Admin() {
                     {importResult && (
                         <div className={`msg ${importResult.success ? 'msg-ok' : 'msg-err'}`}>
                             {importResult.success
-                                ? `Import done: ${importResult.inserted} added/updated, ${importResult.skipped} skipped, total ${importResult.total}.`
+                                ? `Import done: ${importResult.added} added, ${importResult.updated} updated, ${importResult.unchanged} had nothing new, ${importResult.skipped} skipped (${importResult.total} rows in the file).`
                                 : importResult.message}
-                            {importResult.errors && importResult.errors.length > 0 && (
-                                <details style={{ marginTop: 8 }}>
-                                    <summary style={{ cursor: 'pointer' }}>Show details</summary>
-                                    <ul style={{ margin: '8px 0 0', paddingLeft: 20 }}>
-                                        {importResult.errors.map((e, i) => <li key={i}>{e}</li>)}
+                            {[
+                                ['Updated: what changed', importResult.updatedList],
+                                ['Kept as in the dashboard (the file had a different value)', importResult.keptList],
+                                ['Skipped (nothing was added or changed for these rows)', importResult.skippedList],
+                                ['Notes', importResult.warnings],
+                                ['Errors', importResult.errors],
+                            ].filter(([, list]) => list && list.length > 0).map(([title, list]) => (
+                                <details key={title} style={{ marginTop: 8 }}>
+                                    <summary style={{ cursor: 'pointer' }}>{title}: {list.length}</summary>
+                                    <ul style={{ margin: '8px 0 0', paddingLeft: 20, maxHeight: 260, overflowY: 'auto' }}>
+                                        {list.map((e, i) => <li key={i}>{e}</li>)}
                                     </ul>
                                 </details>
-                            )}
+                            ))}
                         </div>
                     )}
 

@@ -134,6 +134,24 @@ export default function AppShell({ children }) {
 
     return (
         <div className={`sh-app ${open ? '' : 'sh-closed'}`}>
+            {/* Profile menu and Members arrow styles live here, so they always load with this component */}
+            <style jsx global>{`
+                .sh-pm { position: relative; }
+                .sh-chip { cursor: pointer; font: inherit; color: inherit; text-align: left; }
+                .sh-pm-menu { position: absolute; right: 0; top: calc(100% + 8px); z-index: 50; min-width: 220px; background: #fff; border: 1px solid #E4E7EC; border-radius: 14px; box-shadow: 0 12px 32px rgba(16, 24, 40, .18); padding: 8px; display: flex; flex-direction: column; gap: 2px; }
+                .sh-pm-head { padding: 10px 12px 12px; border-bottom: 1px solid #EAECF0; margin-bottom: 6px; }
+                .sh-pm-head b { display: block; font-size: 14px; color: #1D2939; }
+                .sh-pm-head small { color: #667085; font-size: 12px; }
+                .sh-pm-item { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px; border: 0; border-radius: 10px; background: transparent; color: #344054; font: inherit; font-size: 14px; font-weight: 600; text-decoration: none; cursor: pointer; width: 100%; text-align: left; box-sizing: border-box; }
+                .sh-pm-item:hover { background: #F2F4F7; }
+                .sh-pm-danger { color: #B42318; }
+                .sh-pm-danger:hover { background: #FEF3F2; }
+                .sh-split { display: flex; align-items: stretch; gap: 2px; }
+                .sh-split .sh-nav { flex: 1 1 auto; width: auto; }
+                .sh-split-btn { flex: 0 0 44px; border: 0; border-radius: 10px; background: transparent; color: #C9D3E3; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+                .sh-split-btn:hover { background: #2A384E; color: #fff; }
+                .sh-split-btn.on { color: #fff; }
+            `}</style>
             <aside className="sh-side" aria-label="Main menu">
                 <div className="sh-brand">
                     <span className="sh-logo">TY</span>
