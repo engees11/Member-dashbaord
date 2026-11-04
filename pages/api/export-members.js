@@ -8,7 +8,7 @@ const HEADER = [
     'Native Place', 'Address', 'Area', 'Aadhaar Number', 'PAN Number', 'Status', 'Form', 'Added On', 'Deleted',
 ];
 const WIDTHS = [14, 8, 16, 16, 16, 18, 26, 12, 16, 40, 16, 18, 14, 12, 16, 12, 9];
-const STATUS = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected', expired: 'Expired', new: 'New', need_review: 'Need Review' };
+const STATUS = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected', expired: 'Expired', new: 'New', need_review: 'Need Review', retired: 'Retired' };
 const FORM = { aadhaar_update: 'Aadhaar form', details_update: 'Full Details form' };
 
 const rowOf = (m) => [

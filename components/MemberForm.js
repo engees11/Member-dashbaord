@@ -115,6 +115,7 @@ export default function MemberForm({ open, member, onClose, onSaved, initial, no
                                     <option value="pending">Pending</option>
                                     <option value="approved">Approved</option>
                                     <option value="need_review">Need Review</option>
+                                    <option value="retired">Retired</option>
                                     <option value="rejected">Rejected</option>
                                     <option value="expired">Expired</option>
                                 </select>

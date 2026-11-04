@@ -21,7 +21,7 @@ export default async function handler(req, res) {
         const section = body.form_type === undefined ? 'details_update' : String(body.form_type || '');
         if (!['details_update', 'aadhaar_update', ''].includes(section)) return res.status(400).json({ success: false, message: 'Choose a valid section' });
         const status = body.status === undefined || body.status === '' ? 'new' : String(body.status);
-        if (!['new', 'pending', 'approved', 'need_review', 'rejected', 'expired'].includes(status)) return res.status(400).json({ success: false, message: 'Choose a valid status' });
+        if (!['new', 'pending', 'approved', 'need_review', 'rejected', 'expired', 'retired'].includes(status)) return res.status(400).json({ success: false, message: 'Choose a valid status' });
 
         const cleaned = cleanMemberInput(body);
         if (cleaned.error) return res.status(400).json({ success: false, message: cleaned.error });

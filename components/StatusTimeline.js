@@ -8,6 +8,7 @@ const STATUS = {
     need_review: { label: 'Need Review', color: '#9333ea' },
     expired: { label: 'Expired', color: '#64748b' },
     new: { label: 'New', color: '#2563eb' },
+    retired: { label: 'Retired', color: '#92400e' },
     deleted: { label: 'Deleted', color: '#B42318' },
 };
 

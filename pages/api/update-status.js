@@ -2,7 +2,7 @@ import { supabase } from '../../lib/supabase';
 import { requireUser } from '../../lib/auth';
 import { logActivity, memberLabel } from '../../lib/activity';
 
-const STATUSES = ['pending', 'approved', 'rejected', 'expired', 'new', 'need_review'];
+const STATUSES = ['pending', 'approved', 'rejected', 'expired', 'new', 'need_review', 'retired'];
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ success: false, message: 'Method not allowed' });

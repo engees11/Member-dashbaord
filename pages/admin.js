@@ -17,6 +17,7 @@ const CARDS = [
     { key: 'expired', status: 'expired', title: 'Expired', variant: 'expired', Icon: IconHourglass },
     { key: 'new', status: 'new', title: 'New', variant: 'new', Icon: IconFile },
     { key: 'needReview', status: 'need_review', title: 'Need Review', variant: 'review', Icon: IconStar },
+    { key: 'retired', status: 'retired', title: 'Retired (45+)', variant: 'expired', Icon: IconUsers },
     { key: 'deleted', href: '/admin/deleted', title: 'Deleted', variant: 'deleted', Icon: IconTrash, adminOnly: true },
 ];
 

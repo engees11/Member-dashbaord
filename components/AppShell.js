@@ -7,7 +7,7 @@ import { authFetch, clearSession, getToken, getUser, saveUser, initials } from '
 
 const STATUS_LINKS = [
     ['all', 'All members'], ['pending', 'Pending'], ['approved', 'Approved'], ['rejected', 'Rejected'],
-    ['expired', 'Expired'], ['new', 'New'], ['need_review', 'Need Review'],
+    ['expired', 'Expired'], ['new', 'New'], ['need_review', 'Need Review'], ['retired', 'Retired (45+)'],
 ];
 
 function PeopleGroup({ title, people, path }) {
