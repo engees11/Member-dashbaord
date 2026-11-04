@@ -1,3 +1,4 @@
+import { fmtDate } from '../lib/format';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
@@ -187,7 +188,7 @@ export default function Admin() {
                         {CARDS.filter((c) => !c.adminOnly || admin).map(({ key, status, href, title, variant, Icon }) => (
                             <StatCard
                                 key={key}
-                                title={title}
+                                title={key === 'retired' && stats && stats.retiredAsOf ? `Retired (45+ on ${fmtDate(stats.retiredAsOf)})` : title}
                                 variant={variant}
                                 value={stats ? stats[key] : '-'}
                                 icon={<Icon />}

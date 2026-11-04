@@ -1,6 +1,7 @@
 import { supabase } from '../../lib/supabase';
 import { requireUser } from '../../lib/auth';
-import { retiredCutoffIso } from '../../lib/retired';
+import { retiredCutoffIso, retiredRef } from '../../lib/retired';
+import { getMeetingDate } from '../../lib/settings';
 
 export default async function handler(req, res) {
     if (!(await requireUser(req))) return res.status(401).json({ success: false });
@@ -30,6 +31,7 @@ export default async function handler(req, res) {
     const byStatus = (status) => count((q) => (status === null ? q.is('status', null) : q.eq('status', status)));
 
     try {
+        const meeting = (await getMeetingDate()).date; // null = count on today's date
         const [total, approved, rejected, expired, newCount, needReview, pendingSet1, pendingSet2, deletedMembers, deletedTeam, retired] = await Promise.all([
             count((q) => q),
             byStatus('approved'),
@@ -48,7 +50,7 @@ export default async function handler(req, res) {
                 const { data, error } = await supabase.from('team_members').select('*');
                 return error ? 0 : (data || []).filter((m) => m.deleted_at).length;
             })(),
-            count((q) => q.or(`status.eq.retired,birth_date.lte.${retiredCutoffIso()}`)), // marked Retired, or 45 or more today
+            count((q) => q.or(`status.eq.retired,birth_date.lte.${retiredCutoffIso(retiredRef(meeting))}`)), // marked Retired, or 45 or more on the meeting date (today if none)
         ]);
 
         const stats = {
@@ -62,6 +64,7 @@ export default async function handler(req, res) {
             retired,
             deleted: deletedMembers + deletedTeam,
         };
+        stats.retiredAsOf = meeting; // shown on the dashboard card
 
         return res.json({ success: true, stats });
     } catch (e) {
