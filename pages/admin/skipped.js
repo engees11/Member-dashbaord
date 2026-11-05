@@ -123,8 +123,8 @@ export default function Duplicates() {
                                         <td>{r.membership_no || '-'}</td>
                                         <td>{maskAadhaar(r.aadhaar_number)}</td>
                                         <td>{r.detail || '-'}</td>
-                                        <td>
-                                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                        <td style={{ whiteSpace: 'nowrap' }}>
+                                            <div style={{ display: 'flex', gap: 8, flexWrap: 'nowrap' }}>
                                                 <button className="btn btn-blue btn-sm" onClick={() => setAddFor({ id: r.id, ...skippedToInitial(r) })}>Add as member</button>
                                                 <button className="btn btn-gray btn-sm" onClick={() => remove(r)}>Remove</button>
                                             </div>

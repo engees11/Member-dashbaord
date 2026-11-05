@@ -339,7 +339,7 @@ export default function MembersList() {
                                             <td>{m.whatsapp_number || '-'}</td>
                                             <td><span className="badge" style={{ background: '#E8ECF4', color: '#344054' }}>{SECTION_LABEL[rowType(m)]}</span></td>
                                             <td><span className={`badge b-${m.status}`} style={m.status === 'retired' ? { background: '#F3E8DC', color: '#7A4B1E' } : undefined}>{LABELS[m.status] || m.status}</span>{m.status !== 'retired' && isRetired(m, ref) && <span className="badge" style={{ background: '#FEE4E2', color: '#B42318', marginLeft: 6 }}>Retired</span>}</td>
-                                            <td><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}><button className="btn btn-blue btn-sm" onClick={() => setSelected(m)}>View</button>{!isRetiredMember(m, ref) && <button className="btn btn-gray btn-sm" onClick={() => { if (confirm(`Mark ${fullName(m) || 'this member'} as Retired?`)) updateStatus(m.id, 'retired'); }}>Retired</button>}</div></td>
+                                            <td style={{ whiteSpace: 'nowrap' }}><div style={{ display: 'flex', gap: 8, flexWrap: 'nowrap' }}><button className="btn btn-blue btn-sm" onClick={() => setSelected(m)}>View</button>{!isRetiredMember(m, ref) && <button className="btn btn-gray btn-sm" onClick={() => { if (confirm(`Mark ${fullName(m) || 'this member'} as Retired?`)) updateStatus(m.id, 'retired'); }}>Retired</button>}</div></td>
                                         </tr>
                                     ))
                                 )}
@@ -365,7 +365,7 @@ export default function MembersList() {
                                             <td>{m.whatsapp_number || '-'}</td>
                                             <td>{m.submitted_at ? new Date(m.submitted_at).toLocaleDateString() : (m.created_at ? new Date(m.created_at).toLocaleDateString() : '-')}</td>
                                             <td><span className={`badge b-${m.status}`} style={m.status === 'retired' ? { background: '#F3E8DC', color: '#7A4B1E' } : undefined}>{LABELS[m.status] || m.status}</span>{m.status !== 'retired' && isRetired(m, ref) && <span className="badge" style={{ background: '#FEE4E2', color: '#B42318', marginLeft: 6 }}>Retired</span>}</td>
-                                            <td><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}><button className="btn btn-blue btn-sm" onClick={() => setSelected(m)}>View</button>{!isRetiredMember(m, ref) && <button className="btn btn-gray btn-sm" onClick={() => { if (confirm(`Mark ${fullName(m) || 'this member'} as Retired?`)) updateStatus(m.id, 'retired'); }}>Retired</button>}</div></td>
+                                            <td style={{ whiteSpace: 'nowrap' }}><div style={{ display: 'flex', gap: 8, flexWrap: 'nowrap' }}><button className="btn btn-blue btn-sm" onClick={() => setSelected(m)}>View</button>{!isRetiredMember(m, ref) && <button className="btn btn-gray btn-sm" onClick={() => { if (confirm(`Mark ${fullName(m) || 'this member'} as Retired?`)) updateStatus(m.id, 'retired'); }}>Retired</button>}</div></td>
                                         </tr>
                                     ))
                                 )}
@@ -395,7 +395,7 @@ export default function MembersList() {
                                             <td>{m.aadhaar_number || '-'}</td>
                                             <td>{m.submitted_at ? new Date(m.submitted_at).toLocaleDateString() : (m.created_at ? new Date(m.created_at).toLocaleDateString() : '-')}</td>
                                             <td><span className={`badge b-${m.status}`} style={m.status === 'retired' ? { background: '#F3E8DC', color: '#7A4B1E' } : undefined}>{LABELS[m.status] || m.status}</span>{m.status !== 'retired' && isRetired(m, ref) && <span className="badge" style={{ background: '#FEE4E2', color: '#B42318', marginLeft: 6 }}>Retired</span>}</td>
-                                            <td><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}><button className="btn btn-blue btn-sm" onClick={() => setSelected(m)}>View</button>{!isRetiredMember(m, ref) && <button className="btn btn-gray btn-sm" onClick={() => { if (confirm(`Mark ${fullName(m) || 'this member'} as Retired?`)) updateStatus(m.id, 'retired'); }}>Retired</button>}</div></td>
+                                            <td style={{ whiteSpace: 'nowrap' }}><div style={{ display: 'flex', gap: 8, flexWrap: 'nowrap' }}><button className="btn btn-blue btn-sm" onClick={() => setSelected(m)}>View</button>{!isRetiredMember(m, ref) && <button className="btn btn-gray btn-sm" onClick={() => { if (confirm(`Mark ${fullName(m) || 'this member'} as Retired?`)) updateStatus(m.id, 'retired'); }}>Retired</button>}</div></td>
                                         </tr>
                                     ))
                                 )}
@@ -423,7 +423,7 @@ export default function MembersList() {
                                             <td>{m.area || '-'}</td>
                                             <td>{m.aadhaar_number || '-'}</td>
                                             <td><span className={`badge b-${m.status}`} style={m.status === 'retired' ? { background: '#F3E8DC', color: '#7A4B1E' } : undefined}>{LABELS[m.status] || m.status}</span>{m.status !== 'retired' && isRetired(m, ref) && <span className="badge" style={{ background: '#FEE4E2', color: '#B42318', marginLeft: 6 }}>Retired</span>}</td>
-                                            <td><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}><button className="btn btn-blue btn-sm" onClick={() => setSelected(m)}>View</button>{!isRetiredMember(m, ref) && <button className="btn btn-gray btn-sm" onClick={() => { if (confirm(`Mark ${fullName(m) || 'this member'} as Retired?`)) updateStatus(m.id, 'retired'); }}>Retired</button>}</div></td>
+                                            <td style={{ whiteSpace: 'nowrap' }}><div style={{ display: 'flex', gap: 8, flexWrap: 'nowrap' }}><button className="btn btn-blue btn-sm" onClick={() => setSelected(m)}>View</button>{!isRetiredMember(m, ref) && <button className="btn btn-gray btn-sm" onClick={() => { if (confirm(`Mark ${fullName(m) || 'this member'} as Retired?`)) updateStatus(m.id, 'retired'); }}>Retired</button>}</div></td>
                                         </tr>
                                     ))
                                 )}
