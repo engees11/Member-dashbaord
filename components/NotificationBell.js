@@ -3,33 +3,43 @@ import { authFetch } from '../lib/session';
 import { IconBell } from './Icons';
 
 const SEEN_KEY = 'notif_seen_at';
-const STATUS_TEXT = { approved: 'Approve', rejected: 'Reject', need_review: 'Need Review', expired: 'Expired', pending: 'Pending', new: 'New', retired: 'Retired' };
+// "<person> <what they did>", all in English
+const statusText = (label, status) => ({
+    approved: `approved ${label}`,
+    rejected: `rejected ${label}`,
+    need_review: `marked ${label} as Need Review`,
+    expired: `marked ${label} as expired`,
+    pending: `marked ${label} as pending`,
+    new: `marked ${label} as new`,
+    retired: `marked ${label} as retired`,
+}[status] || `changed the status of ${label} to ${status}`);
 
-function describe(a) {
+export function describeActivity(a) {
+    const who = a.member_label || 'a member';
     switch (a.action) {
-        case 'status_change': return `ne ${a.member_label || 'member'} ko ${STATUS_TEXT[a.new_status] || a.new_status} kiya`;
-        case 'member_edit': return `ne ${a.member_label || 'member'} ki details edit ki`;
-        case 'member_delete': return `ne ${a.member_label || 'member'} ko delete kiya`;
-        case 'member_restore': return `ne ${a.member_label || 'member'} ko wapas laaya (restore kiya)`;
-        case 'member_create': return `ne ${a.member_label || 'naya member'} add kiya`;
-        case 'import': return 'ne CSV import kiya';
-        case 'team_add': return `ne ${a.member_label} ko team mein add kiya`;
-        case 'team_deactivate': return `ne ${a.member_label} ko inactive kiya`;
-        case 'team_activate': return `ne ${a.member_label} ko active kiya`;
-        case 'team_delete': return `ne ${a.member_label} ko team se delete kiya`;
-        case 'team_restore': return `ne ${a.member_label} ko team mein wapas laaya`;
-        case 'team_make_admin': return `ne ${a.member_label} ko admin banaya`;
-        case 'team_make_member': return `ne ${a.member_label} ko team member banaya`;
-        case 'password_reset': return `ne ${a.member_label} ka password reset kiya`;
-        default: return a.action;
+        case 'status_change': return statusText(who, a.new_status);
+        case 'member_edit': return `edited the details of ${who}`;
+        case 'member_delete': return `deleted ${who}`;
+        case 'member_restore': return `restored ${who}`;
+        case 'member_create': return `added ${a.member_label || 'a new member'}`;
+        case 'import': return 'imported a CSV file';
+        case 'team_add': return `added ${who} to the team`;
+        case 'team_deactivate': return `made ${who} inactive`;
+        case 'team_activate': return `made ${who} active`;
+        case 'team_delete': return `removed ${who} from the team`;
+        case 'team_restore': return `restored ${who} to the team`;
+        case 'team_make_admin': return `made ${who} an admin`;
+        case 'team_make_member': return `made ${who} a team member`;
+        case 'password_reset': return `reset the password of ${who}`;
+        default: return String(a.action || 'did something').replace(/_/g, ' ');
     }
 }
 
-function timeAgo(iso) {
-    const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
-    if (s < 60) return 'abhi';
-    if (s < 3600) return `${Math.floor(s / 60)} min pehle`;
-    if (s < 86400) return `${Math.floor(s / 3600)} ghante pehle`;
+export function timeAgo(iso, now = Date.now()) {
+    const s = Math.max(0, (now - new Date(iso).getTime()) / 1000);
+    if (s < 60) return 'just now';
+    if (s < 3600) return `${Math.floor(s / 60)} min ago`;
+    if (s < 86400) return `${Math.floor(s / 3600)} hr ago`;
     return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 }
 
@@ -88,13 +98,14 @@ export default function NotificationBell() {
             {open && (
                 <div className="td-bell-panel">
                     <h3>Notifications</h3>
+                    <p className="td-muted td-small" style={{ margin: '0 0 8px' }}>Last 24 hours</p>
                     {items.length === 0 ? (
-                        <p className="td-muted td-small">Abhi tak koi activity nahi hai.</p>
+                        <p className="td-muted td-small">No activity in the last 24 hours.</p>
                     ) : (
                         <ul>
                             {items.map((a) => (
                                 <li key={a.id}>
-                                    <span><b>{a.actor_name}</b> {describe(a)}</span>
+                                    <span><b>{a.actor_name}</b> {describeActivity(a)}</span>
                                     <span className="td-muted td-small">{timeAgo(a.created_at)}</span>
                                 </li>
                             ))}
