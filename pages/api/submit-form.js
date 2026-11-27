@@ -3,6 +3,11 @@ import { logActivity, memberLabel } from '../../lib/activity';
 import { normalizePan, isValidPan } from '../../lib/format';
 import { missingColumn } from '../../lib/teamUtil';
 import { cleanMemberInput, PAPER_KEYS } from '../../lib/memberFields';
+import { normalizeIndianPhone } from '../../lib/phone';
+import { dmyToIso } from '../../lib/format';
+import { aadhaarProblem, aadhaarDigits, nameProblem, isFutureIso } from '../../lib/validators';
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // new optional details: checked here, and the form is still saved if their database columns are not there yet
 const EXTRA = [...PAPER_KEYS, 'photo_url'];
@@ -13,8 +18,27 @@ export const config = { api: { bodyParser: { sizeLimit: '8mb' } } };
 export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).end();
     try {
-        const { member_id, whatsapp_number, ...rest } = req.body || {};
-        if (!whatsapp_number) return res.json({ success: false, message: 'WhatsApp number required hai' });
+        const { member_id, whatsapp_number: typedNumber, ...rest } = req.body || {};
+        if (!typedNumber) return res.json({ success: false, message: 'Please enter your WhatsApp mobile number.' });
+        // data rules: the same ones the forms show while typing, checked again here
+        const whatsapp_number = normalizeIndianPhone(typedNumber); // 10 digits (+91 / 0 in front is fine) -> 91XXXXXXXXXX
+        if (!whatsapp_number) return res.json({ success: false, message: 'Please enter a valid 10-digit mobile number (it starts with 6, 7, 8 or 9).' });
+        for (const [k, label] of [['first_name', 'First name'], ['father_name', 'Father name'], ['last_name', 'Last name']]) {
+            const problem = k in rest ? nameProblem(rest[k], label) : '';
+            if (problem) return res.json({ success: false, message: problem });
+        }
+        if (rest.email && !EMAIL_RE.test(String(rest.email).trim())) return res.json({ success: false, message: 'Please enter a valid email address.' });
+        if (rest.birth_date) {
+            const iso = dmyToIso(rest.birth_date);
+            if (!iso) return res.json({ success: false, message: 'Birth date is not a real date.' });
+            if (isFutureIso(iso)) return res.json({ success: false, message: 'Birth date cannot be in the future.' });
+            rest.birth_date = iso;
+        }
+        if (rest.aadhaar_number) {
+            const problem = aadhaarProblem(rest.aadhaar_number);
+            if (problem) return res.json({ success: false, message: problem });
+            rest.aadhaar_number = aadhaarDigits(rest.aadhaar_number);
+        }
 
         if ('pan_number' in rest) {
             const pan = normalizePan(rest.pan_number);

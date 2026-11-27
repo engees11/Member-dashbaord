@@ -2,11 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { uploadDoc, validateFile } from '../../lib/supabaseClient';
 import { BLOOD_GROUPS } from '../../lib/memberFields';
+import { typingPhone, typingAadhaar, mobileProblem, aadhaarProblem, panProblem, nameProblem, isFutureIso } from '../../lib/validators';
 import { squareJpeg, isPhone, canUseCamera } from '../../lib/photo';
 import Avatar from '../../components/Avatar';
 import CameraCapture from '../../components/CameraCapture';
 
 const TOTAL_FIELDS = 12;
+const Warn = ({ text }) => (text ? <div role="alert" style={{ fontSize: 13, color: '#B42318', fontWeight: 600, marginTop: 6 }}>{text}</div> : null);
 
 export default function UpdateDetails() {
     const router = useRouter();
@@ -53,14 +55,22 @@ export default function UpdateDetails() {
 
     const submit = async () => {
         setErr('');
-        const required = ['first_name', 'father_name', 'last_name', 'phone', 'dob', 'native_place', 'address', 'area'];
+        const required = ['first_name', 'father_name', 'last_name', 'phone', 'dob', 'native_place', 'address', 'area', 'aadhaar_number'];
         for (const k of required) {
             if (!form[k]) return setErr('All fields marked with * are required.');
         }
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (form.email && !emailRegex.test(form.email)) return setErr('Please enter a valid email address.');
-        const phoneDigits = form.phone.replace(/\D/g, '');
-        if (phoneDigits.length < 10 || phoneDigits.length > 13) return setErr('Please enter a valid WhatsApp number (10-13 digits).');
+        const mobileErr = mobileProblem(form.phone);
+        if (mobileErr) return setErr(mobileErr);
+        for (const [k, label] of [['first_name', 'First name'], ['father_name', 'Father name'], ['last_name', 'Last name']]) {
+            const nameErr = nameProblem(form[k], label);
+            if (nameErr) return setErr(nameErr);
+        }
+        if (isFutureIso(form.dob)) return setErr('Birth date cannot be in the future.');
+        if (form.marriage_date && (isFutureIso(form.marriage_date) || form.marriage_date <= form.dob)) return setErr('Marriage date must be after your birth date and not in the future.');
+        const aadhaarErr = aadhaarProblem(form.aadhaar_number);
+        if (aadhaarErr) return setErr(aadhaarErr);
         const pan = form.pan_number.replace(/\s/g, '').toUpperCase();
         if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan)) return setErr('Please enter a valid PAN number. Example: ABCDE1234F');
         const e1 = validateFile(front); if (e1) return setErr('Aadhaar Front: ' + e1);
@@ -175,12 +185,13 @@ export default function UpdateDetails() {
 
             <div className="gform-q">
                 <label>Whatsapp Mobile Number<span className="req">*</span></label>
-                <input type="text" value={form.phone} onChange={set('phone')} placeholder="Your answer" />
+                <input type="text" inputMode="numeric" maxLength={10} value={form.phone} onChange={(e) => setForm({ ...form, phone: typingPhone(e.target.value) })} placeholder="10-digit mobile number" />
+                <Warn text={mobileProblem(form.phone)} />
             </div>
 
             <div className="gform-q">
                 <label>Birth Date<span className="req">*</span></label>
-                <input type="date" value={form.dob} onChange={set('dob')} />
+                <input type="date" max={new Date().toISOString().slice(0, 10)} value={form.dob} onChange={set('dob')} />
             </div>
 
             <div className="gform-q">
@@ -218,7 +229,7 @@ export default function UpdateDetails() {
 
             <div className="gform-q">
                 <label>Marriage Date</label>
-                <input type="date" value={form.marriage_date} onChange={set('marriage_date')} />
+                <input type="date" max={new Date().toISOString().slice(0, 10)} value={form.marriage_date} onChange={set('marriage_date')} />
                 <div style={{ fontSize: 12, color: '#4B5563', marginTop: 8 }}>Leave empty if not married.</div>
             </div>
 
@@ -234,13 +245,16 @@ export default function UpdateDetails() {
 
             <div className="gform-q">
                 <label>Aadhaar Number<span className="req">*</span></label>
-                <input type="text" value={form.aadhaar_number} onChange={set('aadhaar_number')} placeholder="Your answer" />
+                <input type="text" inputMode="numeric" maxLength={14} value={form.aadhaar_number} onChange={(e) => setForm({ ...form, aadhaar_number: typingAadhaar(e.target.value) })} placeholder="1234 5678 9012" />
+                <div style={{ fontSize: 12, color: '#4B5563', marginTop: 8 }}>12 digits</div>
+                <Warn text={aadhaarProblem(form.aadhaar_number)} />
             </div>
 
             <div className="gform-q">
                 <label>PAN Number<span className="req">*</span></label>
                 <input type="text" value={form.pan_number} onChange={(e) => setForm({ ...form, pan_number: e.target.value.toUpperCase() })} placeholder="Your answer" maxLength={10} />
                 <div style={{ fontSize: 12, color: '#4B5563', marginTop: 8 }}>Example: ABCDE1234F</div>
+                <Warn text={panProblem(form.pan_number)} />
             </div>
 
             <div className="gform-q">

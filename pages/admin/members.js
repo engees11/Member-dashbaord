@@ -5,6 +5,7 @@ import StatusTimeline from '../../components/StatusTimeline';
 import MemberForm from '../../components/MemberForm';
 import { fmtDate } from '../../lib/format';
 import Avatar from '../../components/Avatar';
+import { fmtAadhaar } from '../../lib/validators';
 import PhotoViewer from '../../components/PhotoViewer';
 import { sortMembers, applyAddedFilter, isUnseen, matchesSearch, paginate, PAGE_SIZES } from '../../lib/memberFilters';
 import { isRetired, isRetiredMember, ageOn, refFromIso } from '../../lib/retired';
@@ -285,7 +286,7 @@ export default function MembersList() {
                         <div className="item"><b>Membership no</b>{selected.membership_no || '-'}</div>
                         <div className="item"><b>Email</b>{selected.email || '-'}</div>
                         <div className="item"><b>WhatsApp number</b>{selected.whatsapp_number || '-'}</div>
-                        <div className="item"><b>Aadhaar number</b>{selected.aadhaar_number || '-'}</div>
+                        <div className="item"><b>Aadhaar number</b>{selected.aadhaar_number ? fmtAadhaar(selected.aadhaar_number) : '-'}</div>
                         <div className="item"><b>PAN number</b>{selected.pan_number || '-'}</div>
                         <div className="item"><b>Aadhaar front</b>{selected.aadhaar_front_url ? <a href={selected.aadhaar_front_url} target="_blank" rel="noreferrer">View image</a> : 'Not uploaded'}</div>
                         <div className="item"><b>Aadhaar back</b>{selected.aadhaar_back_url ? <a href={selected.aadhaar_back_url} target="_blank" rel="noreferrer">View image</a> : 'Not uploaded'}</div>

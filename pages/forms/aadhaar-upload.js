@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { uploadDoc, validateFile } from '../../lib/supabaseClient';
+import { typingPhone, mobileProblem, panProblem } from '../../lib/validators';
 
-const TOTAL_FIELDS = 4;
+const TOTAL_FIELDS = 5;
 
 export default function AadhaarUpload() {
     const router = useRouter();
     const memberId = router.query.id || null;
 
-    const [form, setForm] = useState({ email: '', phone: '' });
+    const [form, setForm] = useState({ email: '', phone: '', pan_number: '' });
     const [front, setFront] = useState(null);
     const [back, setBack] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -16,12 +17,19 @@ export default function AadhaarUpload() {
     const [done, setDone] = useState(false);
 
     const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
-    const filled = [form.email, form.phone, front, back].filter(Boolean).length;
+    const filled = [form.email, form.phone, form.pan_number, front, back].filter(Boolean).length;
     const pct = Math.round((filled / TOTAL_FIELDS) * 100);
 
     const submit = async () => {
         setErr('');
         if (!form.email || !form.phone) return setErr('Email and WhatsApp number are required.');
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) return setErr('Please enter a valid email address.');
+        const mobileErr = mobileProblem(form.phone);
+        if (mobileErr) return setErr(mobileErr);
+        const pan = form.pan_number.replace(/\s/g, '').toUpperCase();
+        if (!pan) return setErr('PAN number is required.');
+        const panErr = panProblem(pan);
+        if (panErr) return setErr(panErr);
         const e1 = validateFile(front); if (e1) return setErr('Aadhaar Front: ' + e1);
         const e2 = validateFile(back); if (e2) return setErr('Aadhaar Back: ' + e2);
         setLoading(true);
@@ -36,6 +44,7 @@ export default function AadhaarUpload() {
                     form_type: 'aadhaar_update',
                     email: form.email,
                     whatsapp_number: form.phone,
+                    pan_number: pan,
                     aadhaar_front_url: frontUrl,
                     aadhaar_back_url: backUrl,
                 }),
@@ -81,7 +90,15 @@ export default function AadhaarUpload() {
 
             <div className="gform-q">
                 <label>Whatsapp Mobile Number<span className="req">*</span></label>
-                <input type="text" value={form.phone} onChange={set('phone')} placeholder="Your answer" />
+                <input type="text" inputMode="numeric" maxLength={10} value={form.phone} onChange={(e) => setForm({ ...form, phone: typingPhone(e.target.value) })} placeholder="10-digit mobile number" />
+                {mobileProblem(form.phone) && <div role="alert" style={{ fontSize: 13, color: '#B42318', fontWeight: 600, marginTop: 6 }}>{mobileProblem(form.phone)}</div>}
+            </div>
+
+            <div className="gform-q">
+                <label>PAN Number<span className="req">*</span></label>
+                <input type="text" value={form.pan_number} onChange={(e) => setForm({ ...form, pan_number: e.target.value.toUpperCase().slice(0, 10) })} placeholder="Your answer" maxLength={10} />
+                <div style={{ fontSize: 12, color: '#4B5563', marginTop: 8 }}>Example: ABCDE1234F</div>
+                {panProblem(form.pan_number) && <div role="alert" style={{ fontSize: 13, color: '#B42318', fontWeight: 600, marginTop: 6 }}>{panProblem(form.pan_number)}</div>}
             </div>
 
             <div className="gform-q">

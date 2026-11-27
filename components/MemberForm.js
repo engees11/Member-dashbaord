@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { authFetch } from '../lib/session';
-import { fmtDate } from '../lib/format';
+import { fmtDate, dmyToIso } from '../lib/format';
+import { typingPhone, typingAadhaar, mobileProblem, aadhaarProblem, panProblem, nameProblem, onlyDigits, fmtAadhaar, isValidMembershipNo, isFutureIso } from '../lib/validators';
 import { uploadDoc, validateFile } from '../lib/supabaseClient';
 import { BLOOD_GROUPS } from '../lib/memberFields';
 import { squareJpeg, isPhone, canUseCamera } from '../lib/photo';
@@ -15,6 +16,8 @@ const EMPTY = {
 };
 const phoneForForm = (v) => (/^91\d{10}$/.test(String(v || '')) ? String(v).slice(2) : String(v || ''));
 const Star = () => <span className="mf-star" aria-hidden="true">*</span>;
+// a red line under a box while what is typed is wrong
+const Warn = ({ text }) => (text ? <span className="mf-hint mf-warn" role="alert" style={{ color: '#B42318', fontWeight: 600 }}>{text}</span> : null);
 
 // One form for both: Add Member (member = null) and Edit member
 export default function MemberForm({ open, member, onClose, onSaved, initial, note }) {
@@ -51,7 +54,7 @@ export default function MemberForm({ open, member, onClose, onSaved, initial, no
             email: member.email || '',
             address: member.address || '',
             area: member.area || '',
-            aadhaar_number: member.aadhaar_number || '',
+            aadhaar_number: fmtAadhaar(member.aadhaar_number || ''),
             pan_number: member.pan_number || '',
             blood_group: member.blood_group || '',
             qualification: member.qualification || '',
@@ -88,6 +91,8 @@ export default function MemberForm({ open, member, onClose, onSaved, initial, no
     };
     const takeCaptured = (file) => { setCam(false); setPhoto(file); setRemovePhoto(false); setErr(''); };
     const openCamera = () => { if (isPhone() || !canUseCamera()) { if (camRef.current) camRef.current.click(); } else setCam(true); };
+    const dobIso = f.birth_date ? dmyToIso(f.birth_date) : '';
+    const dobProblem = f.birth_date ? (dobIso === null ? 'Birth date must be a real date like 17/09/1992' : isFutureIso(dobIso) ? 'Birth date cannot be in the future' : '') : '';
     const hasPhoto = !!preview || !!(member && member.photo_url && !removePhoto);
 
     const submit = async (e) => {
@@ -95,7 +100,20 @@ export default function MemberForm({ open, member, onClose, onSaved, initial, no
         setErr('');
         if (!f.first_name.trim()) return setErr('First name is required');
         if (!editing && !f.last_name.trim()) return setErr('Surname is required');
-        if (f.whatsapp_number.replace(/\D/g, '').length < 10) return setErr('Enter the 10-digit mobile number');
+        const mobileErr = f.whatsapp_number.replace(/\D/g, '').length < 10 ? 'Enter the 10-digit mobile number' : mobileProblem(f.whatsapp_number);
+        if (mobileErr) return setErr(mobileErr);
+        const isChanged = (k) => !editing || String(member[k] == null ? '' : member[k]).trim() !== String(f[k] || '').trim();
+        for (const [k, label] of [['first_name', 'First name'], ['father_name', 'Father name'], ['last_name', 'Surname']]) {
+            const problem = isChanged(k) ? nameProblem(f[k], label) : '';
+            if (problem) return setErr(problem);
+        }
+        if (f.membership_no && isChanged('membership_no') && !isValidMembershipNo(f.membership_no)) return setErr('Membership number must be digits only (up to 6 digits)');
+        const aadhaarChanged = !(editing && onlyDigits(member.aadhaar_number) && onlyDigits(member.aadhaar_number) === onlyDigits(f.aadhaar_number));
+        const aadhaarErr = f.aadhaar_number && aadhaarChanged ? aadhaarProblem(f.aadhaar_number) : '';
+        if (aadhaarErr) return setErr(aadhaarErr);
+        const panErr = panProblem(f.pan_number);
+        if (panErr) return setErr(panErr);
+        if (dobProblem) return setErr(dobProblem);
         for (const [file, label] of [[front, 'front'], [back, 'back']]) {
             const bad = file ? validateFile(file) : null;
             if (bad) return setErr(`Aadhaar ${label} photo: ${bad}`);
@@ -179,13 +197,13 @@ export default function MemberForm({ open, member, onClose, onSaved, initial, no
                         )}
 
                         <div className="mf-h">MEMBERSHIP</div>
-                        <div className="td-field mf-full"><label htmlFor="mf-no">Membership No.</label><input id="mf-no" value={f.membership_no} onChange={set('membership_no')} placeholder="Leave empty if not given yet" /><span className="mf-hint">Each membership number can be used for one member only.</span></div>
+                        <div className="td-field mf-full"><label htmlFor="mf-no">Membership No.</label><input id="mf-no" inputMode="numeric" maxLength={6} value={f.membership_no} onChange={(e) => setF({ ...f, membership_no: e.target.value.replace(/\D/g, '').slice(0, 6) })} placeholder="Leave empty if not given yet" /><span className="mf-hint">Each membership number can be used for one member only.</span></div>
 
                         <div className="mf-h">PERSONAL</div>
-                        <div className="td-field"><label htmlFor="mf-fn">First name <Star /></label><input id="mf-fn" value={f.first_name} onChange={set('first_name')} required /></div>
-                        <div className="td-field"><label htmlFor="mf-fa">Father name</label><input id="mf-fa" value={f.father_name} onChange={set('father_name')} /></div>
-                        <div className="td-field"><label htmlFor="mf-ln">Surname {!editing && <Star />}</label><input id="mf-ln" value={f.last_name} onChange={set('last_name')} required={!editing} /></div>
-                        <div className="td-field"><label htmlFor="mf-dob">Birth date</label><input id="mf-dob" value={f.birth_date} onChange={set('birth_date')} placeholder="17/09/1992" /><span className="mf-hint">DD/MM/YYYY</span></div>
+                        <div className="td-field"><label htmlFor="mf-fn">First name <Star /></label><input id="mf-fn" value={f.first_name} onChange={set('first_name')} required /><Warn text={nameProblem(f.first_name, 'First name')} /></div>
+                        <div className="td-field"><label htmlFor="mf-fa">Father name</label><input id="mf-fa" value={f.father_name} onChange={set('father_name')} /><Warn text={nameProblem(f.father_name, 'Father name')} /></div>
+                        <div className="td-field"><label htmlFor="mf-ln">Surname {!editing && <Star />}</label><input id="mf-ln" value={f.last_name} onChange={set('last_name')} required={!editing} /><Warn text={nameProblem(f.last_name, 'Surname')} /></div>
+                        <div className="td-field"><label htmlFor="mf-dob">Birth date</label><input id="mf-dob" value={f.birth_date} onChange={set('birth_date')} placeholder="17/09/1992" /><span className="mf-hint">DD/MM/YYYY</span><Warn text={dobProblem} /></div>
                         <div className="td-field mf-full"><label htmlFor="mf-np">Native place</label><input id="mf-np" value={f.native_place} onChange={set('native_place')} /></div>
 
                         <div className="mf-h">MORE DETAILS</div>
@@ -205,16 +223,17 @@ export default function MemberForm({ open, member, onClose, onSaved, initial, no
                         <div className="mf-h">CONTACT</div>
                         <div className="td-field">
                             <label htmlFor="mf-ph">Mobile number <Star /></label>
-                            <div className="otp-phone"><span className="otp-cc">+91</span><input id="mf-ph" inputMode="numeric" value={f.whatsapp_number} onChange={(e) => setF({ ...f, whatsapp_number: e.target.value.replace(/[^\d]/g, '') })} placeholder="98765 43210" required /></div>
+                            <div className="otp-phone"><span className="otp-cc">+91</span><input id="mf-ph" inputMode="numeric" value={f.whatsapp_number} maxLength={10} onChange={(e) => setF({ ...f, whatsapp_number: typingPhone(e.target.value) })} placeholder="98765 43210" required /></div>
                             <span className="mf-hint">10 digits. One number can belong to one member only.</span>
+                            <Warn text={mobileProblem(f.whatsapp_number)} />
                         </div>
                         <div className="td-field"><label htmlFor="mf-em">Email</label><input id="mf-em" value={f.email} onChange={set('email')} placeholder="name@example.com" /></div>
                         <div className="td-field mf-full"><label htmlFor="mf-ad">Address</label><input id="mf-ad" value={f.address} onChange={set('address')} /></div>
                         <div className="td-field mf-full"><label htmlFor="mf-ar">Area</label><input id="mf-ar" value={f.area} onChange={set('area')} /></div>
 
                         <div className="mf-h">DOCUMENTS</div>
-                        <div className="td-field"><label htmlFor="mf-aa">Aadhaar number</label><input id="mf-aa" value={f.aadhaar_number} onChange={set('aadhaar_number')} /></div>
-                        <div className="td-field"><label htmlFor="mf-pan">PAN number</label><input id="mf-pan" value={f.pan_number} onChange={(e) => setF({ ...f, pan_number: e.target.value.toUpperCase() })} placeholder="ABCDE1234F" maxLength={10} /><span className="mf-hint">5 letters, 4 digits, 1 letter</span></div>
+                        <div className="td-field"><label htmlFor="mf-aa">Aadhaar number</label><input id="mf-aa" inputMode="numeric" maxLength={14} value={f.aadhaar_number} onChange={(e) => setF({ ...f, aadhaar_number: typingAadhaar(e.target.value) })} placeholder="1234 5678 9012" /><span className="mf-hint">12 digits</span><Warn text={aadhaarProblem(f.aadhaar_number)} /></div>
+                        <div className="td-field"><label htmlFor="mf-pan">PAN number</label><input id="mf-pan" value={f.pan_number} onChange={(e) => setF({ ...f, pan_number: e.target.value.toUpperCase() })} placeholder="ABCDE1234F" maxLength={10} /><span className="mf-hint">5 letters, 4 digits, 1 letter</span><Warn text={panProblem(f.pan_number)} /></div>
                         <div className="td-field mf-full">
                             <label htmlFor="mf-front">Aadhaar front photo</label>
                             <input id="mf-front" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(e) => setFront(e.target.files[0] || null)} />
