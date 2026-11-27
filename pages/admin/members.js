@@ -4,7 +4,7 @@ import { getUser, clearSession } from '../../lib/session';
 import StatusTimeline from '../../components/StatusTimeline';
 import MemberForm from '../../components/MemberForm';
 import { fmtDate } from '../../lib/format';
-import { sortMembers, applyAddedFilter, isNewMember, matchesSearch } from '../../lib/memberFilters';
+import { sortMembers, applyAddedFilter, isNewMember, matchesSearch, paginate, PAGE_SIZES } from '../../lib/memberFilters';
 import { isRetired, isRetiredMember, ageOn, refFromIso } from '../../lib/retired';
 
 const LABELS = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected', expired: 'Expired', new: 'New', need_review: 'Need Review', retired: 'Retired (45+)' };
@@ -21,14 +21,13 @@ const scrollParent = (el) => {
     }
     return document.scrollingElement || document.documentElement;
 };
-const SECTION_LABEL = { aadhaar_update: 'Aadhaar Update', details_update: 'Details Update', not_submitted: 'Not Submitted' };
 
 export default function MembersList() {
     const router = useRouter();
     const status = router.query.status || 'all';
 
     const [members, setMembers] = useState([]);
-    const [tab, setTab] = useState('aadhaar_update');
+    const [tab, setTab] = useState('all'); // all | aadhaar_update | details_update | not_submitted
     const [search, setSearch] = useState('');
     const [selected, setSelected] = useState(null);
     const [meetingIso, setMeetingIso] = useState(null); // annual meeting date (Settings); none = count on today's date
@@ -62,6 +61,10 @@ export default function MembersList() {
 
     const [sort, setSort] = useState('latest');
     const [added, setAdded] = useState('any');
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+    // a new filter, sort, search or page size starts again from page 1
+    useEffect(() => { setPage(1); }, [tab, search, sort, added, status, pageSize]);
     const [formOpen, setFormOpen] = useState(false);
     const [editTarget, setEditTarget] = useState(null);
     const [exportOpen, setExportOpen] = useState(false);
@@ -185,10 +188,12 @@ export default function MembersList() {
     const byStatus = members.filter((m) => inStatus(m, status, ref));
     // typing in the search looks in ALL tabs at once, so nobody has to open each tab to find a member
     const searching = search.trim() !== '';
-    const byTab = searching ? byStatus : byStatus.filter((m) => rowType(m) === tab);
+    const byTab = searching || tab === 'all' ? byStatus : byStatus.filter((m) => rowType(m) === tab);
     const searched = byTab.filter((m) => matchesSearch(m, search));
     const filtered = sortMembers(applyAddedFilter(searched, added), sort);
 
+    const pg = paginate(filtered, page, pageSize);
+    const allCount = byStatus.length;
     const aadhaarCount = byStatus.filter((m) => rowType(m) === 'aadhaar_update').length;
     const detailsCount = byStatus.filter((m) => rowType(m) === 'details_update').length;
     const notSubmittedCount = byStatus.filter((m) => rowType(m) === 'not_submitted').length;
@@ -278,24 +283,9 @@ export default function MembersList() {
                 <div className="table-head" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 14 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                            <button
-                                className={!searching && tab === 'aadhaar_update' ? 'btn btn-blue btn-sm' : 'btn btn-gray btn-sm'}
-                                onClick={() => setTab('aadhaar_update')}
-                            >
-                                Aadhaar Update ({aadhaarCount})
-                            </button>
-                            <button
-                                className={!searching && tab === 'details_update' ? 'btn btn-blue btn-sm' : 'btn btn-gray btn-sm'}
-                                onClick={() => setTab('details_update')}
-                            >
-                                Details Update ({detailsCount})
-                            </button>
-                            <button
-                                className={!searching && tab === 'not_submitted' ? 'btn btn-blue btn-sm' : 'btn btn-gray btn-sm'}
-                                onClick={() => setTab('not_submitted')}
-                            >
-                                Not Submitted ({notSubmittedCount})
-                            </button>
+                            {[['all', `All (${allCount})`], ['aadhaar_update', `Aadhaar Update (${aadhaarCount})`], ['details_update', `Details Update (${detailsCount})`], ['not_submitted', `Not Submitted (${notSubmittedCount})`]].map(([key, label]) => (
+                                <button key={key} className={!searching && tab === key ? 'btn btn-blue btn-sm' : 'btn btn-gray btn-sm'} onClick={() => setTab(key)}>{label}</button>
+                            ))}
                         </div>
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                             <select className="filter-sel" aria-label="Sort" value={sort} onChange={(e) => setSort(e.target.value)}>
@@ -321,117 +311,56 @@ export default function MembersList() {
                 </div>
 
                 <div className="table-wrap">
-                    {searching && (
-                        <table>
-                            <thead>
-                                <tr><th>Mem. No.</th><th>Name</th><th>WhatsApp number</th><th>Section</th><th>Status</th><th>Actions</th></tr>
-                            </thead>
-                            <tbody>
-                                {loading ? (
-                                    <tr><td colSpan={6} className="empty">Loading...</td></tr>
-                                ) : filtered.length === 0 ? (
-                                    <tr><td colSpan={6} className="empty">Nothing found in any tab.</td></tr>
-                                ) : (
-                                    filtered.map((m) => (
-                                        <tr key={m.id}>
-                                            <td><b>{m.membership_no || '-'}</b></td>
-                                            <td>{fullName(m) || m.email || '-'}{isNewMember(m) && <span className="new-tag">NEW</span>}</td>
-                                            <td>{m.whatsapp_number || '-'}</td>
-                                            <td><span className="badge" style={{ background: '#E8ECF4', color: '#344054' }}>{SECTION_LABEL[rowType(m)]}</span></td>
-                                            <td><span className={`badge b-${m.status}`} style={m.status === 'retired' ? { background: '#F3E8DC', color: '#7A4B1E' } : undefined}>{LABELS[m.status] || m.status}</span>{m.status !== 'retired' && isRetired(m, ref) && <span className="badge" style={{ background: '#FEE4E2', color: '#B42318', marginLeft: 6 }}>Retired</span>}</td>
-                                            <td style={{ whiteSpace: 'nowrap' }}><div style={{ display: 'flex', gap: 8, flexWrap: 'nowrap' }}><button className="btn btn-blue btn-sm" onClick={() => setSelected(m)}>View</button>{!isRetiredMember(m, ref) && <button className="btn btn-gray btn-sm" onClick={() => { if (confirm(`Mark ${fullName(m) || 'this member'} as Retired?`)) updateStatus(m.id, 'retired'); }}>Retired</button>}</div></td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    )}
+                    <table className="ml-table">
+                        <thead>
+                            <tr><th>Mem. No.</th><th>Name</th><th>Number</th><th>Native place</th><th>Status</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody>
+                            {loading ? (
+                                <tr><td colSpan={6} className="empty">Loading...</td></tr>
+                            ) : pg.total === 0 ? (
+                                <tr><td colSpan={6} className="empty">{searching ? 'Nothing found in any tab.' : 'No members here.'}</td></tr>
+                            ) : (
+                                pg.rows.map((m) => (
+                                    <tr key={m.id}>
+                                        <td><b>{m.membership_no || '-'}</b></td>
+                                        <td>{fullName(m) || m.email || '-'}{isNewMember(m) && <span className="new-tag">NEW</span>}</td>
+                                        <td>{m.whatsapp_number || '-'}</td>
+                                        <td>{m.native_place || '-'}</td>
+                                        <td><span className={`badge b-${m.status}`} style={m.status === 'retired' ? { background: '#F3E8DC', color: '#7A4B1E' } : undefined}>{LABELS[m.status] || m.status}</span>{m.status !== 'retired' && isRetired(m, ref) && <span className="badge" style={{ background: '#FEE4E2', color: '#B42318', marginLeft: 6 }}>Retired</span>}</td>
+                                        <td style={{ whiteSpace: 'nowrap' }}><div style={{ display: 'flex', gap: 8, flexWrap: 'nowrap' }}><button className="btn btn-blue btn-sm" onClick={() => setSelected(m)}>View</button>{!isRetiredMember(m, ref) && <button className="btn btn-gray btn-sm" onClick={() => { if (confirm(`Mark ${fullName(m) || 'this member'} as Retired?`)) updateStatus(m.id, 'retired'); }}>Retired</button>}</div></td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
 
-                    {!searching && tab === 'aadhaar_update' && (
-                        <table>
-                            <thead>
-                                <tr><th>Mem. No.</th><th>Email</th><th>WhatsApp number</th><th>Submitted date</th><th>Status</th><th>Actions</th></tr>
-                            </thead>
-                            <tbody>
-                                {loading ? (
-                                    <tr><td colSpan={6} className="empty">Loading...</td></tr>
-                                ) : filtered.length === 0 ? (
-                                    <tr><td colSpan={6} className="empty">No records found.</td></tr>
-                                ) : (
-                                    filtered.map((m) => (
-                                        <tr key={m.id}>
-                                            <td><b>{m.membership_no || '-'}</b></td>
-                                            <td>{m.email || '-'}{isNewMember(m) && <span className="new-tag">NEW</span>}</td>
-                                            <td>{m.whatsapp_number || '-'}</td>
-                                            <td>{m.submitted_at ? new Date(m.submitted_at).toLocaleDateString() : (m.created_at ? new Date(m.created_at).toLocaleDateString() : '-')}</td>
-                                            <td><span className={`badge b-${m.status}`} style={m.status === 'retired' ? { background: '#F3E8DC', color: '#7A4B1E' } : undefined}>{LABELS[m.status] || m.status}</span>{m.status !== 'retired' && isRetired(m, ref) && <span className="badge" style={{ background: '#FEE4E2', color: '#B42318', marginLeft: 6 }}>Retired</span>}</td>
-                                            <td style={{ whiteSpace: 'nowrap' }}><div style={{ display: 'flex', gap: 8, flexWrap: 'nowrap' }}><button className="btn btn-blue btn-sm" onClick={() => setSelected(m)}>View</button>{!isRetiredMember(m, ref) && <button className="btn btn-gray btn-sm" onClick={() => { if (confirm(`Mark ${fullName(m) || 'this member'} as Retired?`)) updateStatus(m.id, 'retired'); }}>Retired</button>}</div></td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    )}
-
-                    {!searching && tab === 'details_update' && (
-                        <table>
-                            <thead>
-                                <tr><th>Mem. No.</th><th>Name</th><th>WhatsApp number</th><th>Email</th><th>Birth date</th><th>Area</th><th>Aadhaar number</th><th>Submitted date</th><th>Status</th><th>Actions</th></tr>
-                            </thead>
-                            <tbody>
-                                {loading ? (
-                                    <tr><td colSpan={10} className="empty">Loading...</td></tr>
-                                ) : filtered.length === 0 ? (
-                                    <tr><td colSpan={10} className="empty">No records found.</td></tr>
-                                ) : (
-                                    filtered.map((m) => (
-                                        <tr key={m.id}>
-                                            <td><b>{m.membership_no || '-'}</b></td>
-                                            <td>{fullName(m) || '-'}{isNewMember(m) && <span className="new-tag">NEW</span>}</td>
-                                            <td>{m.whatsapp_number || '-'}</td>
-                                            <td>{m.email || '-'}</td>
-                                            <td>{fmtDate(m.birth_date)}</td>
-                                            <td>{m.area || '-'}</td>
-                                            <td>{m.aadhaar_number || '-'}</td>
-                                            <td>{m.submitted_at ? new Date(m.submitted_at).toLocaleDateString() : (m.created_at ? new Date(m.created_at).toLocaleDateString() : '-')}</td>
-                                            <td><span className={`badge b-${m.status}`} style={m.status === 'retired' ? { background: '#F3E8DC', color: '#7A4B1E' } : undefined}>{LABELS[m.status] || m.status}</span>{m.status !== 'retired' && isRetired(m, ref) && <span className="badge" style={{ background: '#FEE4E2', color: '#B42318', marginLeft: 6 }}>Retired</span>}</td>
-                                            <td style={{ whiteSpace: 'nowrap' }}><div style={{ display: 'flex', gap: 8, flexWrap: 'nowrap' }}><button className="btn btn-blue btn-sm" onClick={() => setSelected(m)}>View</button>{!isRetiredMember(m, ref) && <button className="btn btn-gray btn-sm" onClick={() => { if (confirm(`Mark ${fullName(m) || 'this member'} as Retired?`)) updateStatus(m.id, 'retired'); }}>Retired</button>}</div></td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    )}
-
-                    {!searching && tab === 'not_submitted' && (
-                        <table>
-                            <thead>
-                                <tr><th>Mem. No.</th><th>Name</th><th>WhatsApp number</th><th>Native place</th><th>Area</th><th>Aadhaar number</th><th>Status</th><th>Actions</th></tr>
-                            </thead>
-                            <tbody>
-                                {loading ? (
-                                    <tr><td colSpan={8} className="empty">Loading...</td></tr>
-                                ) : filtered.length === 0 ? (
-                                    <tr><td colSpan={8} className="empty">No records found.</td></tr>
-                                ) : (
-                                    filtered.map((m) => (
-                                        <tr key={m.id}>
-                                            <td><b>{m.membership_no || '-'}</b></td>
-                                            <td>{fullName(m) || '-'}{isNewMember(m) && <span className="new-tag">NEW</span>}</td>
-                                            <td>{m.whatsapp_number || '-'}</td>
-                                            <td>{m.native_place || '-'}</td>
-                                            <td>{m.area || '-'}</td>
-                                            <td>{m.aadhaar_number || '-'}</td>
-                                            <td><span className={`badge b-${m.status}`} style={m.status === 'retired' ? { background: '#F3E8DC', color: '#7A4B1E' } : undefined}>{LABELS[m.status] || m.status}</span>{m.status !== 'retired' && isRetired(m, ref) && <span className="badge" style={{ background: '#FEE4E2', color: '#B42318', marginLeft: 6 }}>Retired</span>}</td>
-                                            <td style={{ whiteSpace: 'nowrap' }}><div style={{ display: 'flex', gap: 8, flexWrap: 'nowrap' }}><button className="btn btn-blue btn-sm" onClick={() => setSelected(m)}>View</button>{!isRetiredMember(m, ref) && <button className="btn btn-gray btn-sm" onClick={() => { if (confirm(`Mark ${fullName(m) || 'this member'} as Retired?`)) updateStatus(m.id, 'retired'); }}>Retired</button>}</div></td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    )}
+                <div className="ml-foot">
+                    <label className="ml-per">Items per page:
+                        <select className="filter-sel" aria-label="Items per page" value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
+                            {PAGE_SIZES.map((n) => <option key={n} value={n}>{n}</option>)}
+                        </select>
+                    </label>
+                    <span>{pg.from} – {pg.to} of {pg.total}</span>
+                    <span className="ml-arrows">
+                        <button type="button" aria-label="First page" disabled={pg.page <= 1} onClick={() => setPage(1)}>«</button>
+                        <button type="button" aria-label="Previous page" disabled={pg.page <= 1} onClick={() => setPage(pg.page - 1)}>‹</button>
+                        <button type="button" aria-label="Next page" disabled={pg.page >= pg.pages} onClick={() => setPage(pg.page + 1)}>›</button>
+                        <button type="button" aria-label="Last page" disabled={pg.page >= pg.pages} onClick={() => setPage(pg.pages)}>»</button>
+                    </span>
                 </div>
             </div>
+
+            <style jsx global>{`
+                .ml-table { min-width: 680px; }
+                .ml-foot { display: flex; align-items: center; justify-content: flex-end; gap: 24px; padding: 14px 18px; font-size: 13px; color: #475467; flex-wrap: wrap; }
+                .ml-per { display: flex; align-items: center; gap: 8px; }
+                .ml-arrows { display: flex; gap: 6px; }
+                .ml-arrows button { width: 36px; height: 36px; border: 1px solid #E4E7EC; border-radius: 10px; background: #fff; color: #344054; font-size: 18px; line-height: 1; cursor: pointer; }
+                .ml-arrows button:disabled { opacity: .4; cursor: default; }
+            `}</style>
+
             <MemberForm
                 open={formOpen}
                 member={editTarget}
