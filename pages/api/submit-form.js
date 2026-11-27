@@ -19,6 +19,7 @@ export default async function handler(req, res) {
         const nowIso = new Date().toISOString();
         const fields = { ...rest, whatsapp_number, status: 'new', updated_at: nowIso, submitted_at: nowIso };
         Object.keys(fields).forEach((k) => (fields[k] == null || fields[k] === '') && delete fields[k]);
+        fields.seen_at = null; // a form that comes in is NEW until somebody opens it
 
         let existing = null;
         if (member_id) {
@@ -42,6 +43,11 @@ export default async function handler(req, res) {
             }
         };
         await save();
+        if (error && 'seen_at' in fields && missingColumn(error) && /seen_at/.test(String(error.message || ''))) {
+            // supabase/new-members-seen.sql was not run yet: save the form without the NEW mark
+            delete fields.seen_at;
+            await save();
+        }
         if (error && fields.pan_number && missingColumn(error)) {
             // supabase/pan-number.sql was not run yet: save everything else so the member's form is not lost
             console.error('[submit-form] the pan_number column is missing, saved without PAN. Run supabase/pan-number.sql');

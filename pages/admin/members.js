@@ -4,7 +4,7 @@ import { getUser, clearSession } from '../../lib/session';
 import StatusTimeline from '../../components/StatusTimeline';
 import MemberForm from '../../components/MemberForm';
 import { fmtDate } from '../../lib/format';
-import { sortMembers, applyAddedFilter, isNewMember, matchesSearch, paginate, PAGE_SIZES } from '../../lib/memberFilters';
+import { sortMembers, applyAddedFilter, isUnseen, matchesSearch, paginate, PAGE_SIZES } from '../../lib/memberFilters';
 import { isRetired, isRetiredMember, ageOn, refFromIso } from '../../lib/retired';
 
 const LABELS = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected', expired: 'Expired', new: 'New', need_review: 'Need Review', retired: 'Retired (45+)' };
@@ -86,6 +86,16 @@ export default function MembersList() {
             } catch { /* keeps counting on today's date */ }
         })();
     }, []);
+
+    // opening a NEW member (View, or a search that finds one) marks it as seen for everybody: NEW goes away and it takes its normal place
+    useEffect(() => {
+        if (!selected || !isUnseen(selected)) return;
+        const id = selected.id;
+        const now = new Date().toISOString();
+        setMembers((list) => list.map((m) => (m.id === id ? { ...m, seen_at: now } : m)));
+        setSelected((s2) => (s2 && s2.id === id ? { ...s2, seen_at: now } : s2));
+        fetch('/api/mark-seen', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` }, body: JSON.stringify({ id }) }).catch(() => {});
+    }, [selected ? selected.id : null]);
 
     // View: scroll up to the member card; Back / close: return to the same place in the list
     const openId = selected ? selected.id : null;
@@ -291,6 +301,7 @@ export default function MembersList() {
                             <select className="filter-sel" aria-label="Sort" value={sort} onChange={(e) => setSort(e.target.value)}>
                                 <option value="latest">Latest first</option>
                                 <option value="oldest">Oldest first</option>
+                                <option value="mem_asc">Membership no. (low to high)</option>
                             </select>
                             <select className="filter-sel" aria-label="Added" value={added} onChange={(e) => setAdded(e.target.value)}>
                                 <option value="any">Added: any time</option>
@@ -324,7 +335,7 @@ export default function MembersList() {
                                 pg.rows.map((m) => (
                                     <tr key={m.id}>
                                         <td><b>{m.membership_no || '-'}</b></td>
-                                        <td>{fullName(m) || m.email || '-'}{isNewMember(m) && <span className="new-tag">NEW</span>}</td>
+                                        <td>{fullName(m) || m.email || '-'}{isUnseen(m) && <span className="new-tag">NEW</span>}</td>
                                         <td>{m.whatsapp_number || '-'}</td>
                                         <td>{m.native_place || '-'}</td>
                                         <td><span className={`badge b-${m.status}`} style={m.status === 'retired' ? { background: '#F3E8DC', color: '#7A4B1E' } : undefined}>{LABELS[m.status] || m.status}</span>{m.status !== 'retired' && isRetired(m, ref) && <span className="badge" style={{ background: '#FEE4E2', color: '#B42318', marginLeft: 6 }}>Retired</span>}</td>
