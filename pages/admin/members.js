@@ -13,6 +13,10 @@ const LABELS = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected',
 const inStatus = (m, status, ref) => status === 'all' || (status === 'retired' ? isRetiredMember(m, ref) : m.status === status);
 const fullName = (m) => [m.first_name, m.father_name, m.last_name].filter(Boolean).join(' ');
 const rowType = (m) => m.form_type || 'not_submitted';
+// An Aadhaar-only member has a short card. But as soon as such a member has any personal detail (a name, a birth date, hobbies, a photo of the
+// business...), the whole details part is shown too, so nothing that was saved stays hidden.
+const DETAIL_KEYS = ['first_name', 'father_name', 'last_name', 'birth_date', 'native_place', 'address', 'area', 'blood_group', 'qualification', 'hobbies', 'marriage_date', 'business_name', 'business_description'];
+const hasDetails = (m) => rowType(m) !== 'aadhaar_update' || DETAIL_KEYS.some((k) => m[k]);
 // the element that really scrolls (the page area, or the whole window)
 const scrollParent = (el) => {
     let p = el && el.parentElement;
@@ -261,7 +265,7 @@ export default function MembersList() {
                     </div>
                     {viewPhoto && selected.photo_url && <PhotoViewer url={selected.photo_url} name={fullName(selected)} onClose={() => setViewPhoto(false)} />}
                     <div className="detail-grid">
-                        {rowType(selected) !== 'aadhaar_update' && (
+                        {hasDetails(selected) && (
                             <>
                                 <div className="item"><b>First name</b>{selected.first_name || '-'}</div>
                                 <div className="item"><b>Father name</b>{selected.father_name || '-'}</div>
