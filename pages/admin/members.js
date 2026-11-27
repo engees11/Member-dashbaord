@@ -71,9 +71,10 @@ export default function MembersList() {
     const [withDeleted, setWithDeleted] = useState(false);
     const [exporting, setExporting] = useState(false);
 
-    // the top bar search sends you here with ?q=...
+    // the search box in the top bar keeps its text in the address (?q=...): the list follows it, and a new search closes an open member
     useEffect(() => {
-        if (router.query.q !== undefined) setSearch(String(router.query.q));
+        setSearch(typeof router.query.q === 'string' ? router.query.q : '');
+        setSelected(null);
     }, [router.query.q]);
 
     // the annual meeting date from Settings (Retired is counted on that date)
@@ -203,6 +204,10 @@ export default function MembersList() {
     const filtered = sortMembers(applyAddedFilter(searched, added), sort);
 
     const pg = paginate(filtered, page, pageSize);
+    const clearSearch = () => {
+        const { q, ...rest } = router.query;
+        router.replace({ pathname: router.pathname, query: rest }, undefined, { shallow: true });
+    };
     const allCount = byStatus.length;
     const aadhaarCount = byStatus.filter((m) => rowType(m) === 'aadhaar_update').length;
     const detailsCount = byStatus.filter((m) => rowType(m) === 'details_update').length;
@@ -294,7 +299,7 @@ export default function MembersList() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                             {[['all', `All (${allCount})`], ['aadhaar_update', `Aadhaar Update (${aadhaarCount})`], ['details_update', `Details Update (${detailsCount})`], ['not_submitted', `Not Submitted (${notSubmittedCount})`]].map(([key, label]) => (
-                                <button key={key} className={!searching && tab === key ? 'btn btn-blue btn-sm' : 'btn btn-gray btn-sm'} onClick={() => setTab(key)}>{label}</button>
+                                <button key={key} className={!searching && tab === key ? 'btn btn-blue btn-sm' : 'btn btn-gray btn-sm'} onClick={() => { setTab(key); if (searching) clearSearch(); }}>{label}</button>
                             ))}
                         </div>
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -309,16 +314,11 @@ export default function MembersList() {
                                 <option value="7">Added: last 7 days</option>
                                 <option value="30">Added: last 30 days</option>
                             </select>
-                            <input
-                                className="searchbar"
-                                placeholder="Search name, mobile, membership no."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                onKeyDown={(e) => { if (e.key === 'Enter' && filtered.length === 1) setSelected(filtered[0]); }}
-                            />
                         </div>
                     </div>
-                    <p style={{ margin: 0, fontSize: 13, color: '#64748b' }}>{searching ? `${filtered.length} found in all tabs (Aadhaar Update, Details Update, Not Submitted)` : `${filtered.length} records`}</p>
+                    <p className="ml-count" style={{ margin: 0, fontSize: 13, color: '#64748b' }}>
+                        {searching ? <>{pg.total} found for “{search.trim()}” in all tabs. <button type="button" className="ml-link" onClick={clearSearch}>Clear search</button></> : `${pg.total} records`}
+                    </p>
                 </div>
 
                 <div className="table-wrap">
@@ -330,7 +330,7 @@ export default function MembersList() {
                             {loading ? (
                                 <tr><td colSpan={6} className="empty">Loading...</td></tr>
                             ) : pg.total === 0 ? (
-                                <tr><td colSpan={6} className="empty">{searching ? 'Nothing found in any tab.' : 'No members here.'}</td></tr>
+                                <tr><td colSpan={6} className="empty">{searching ? 'Data not found' : 'No members here.'}</td></tr>
                             ) : (
                                 pg.rows.map((m) => (
                                     <tr key={m.id}>
@@ -364,6 +364,7 @@ export default function MembersList() {
             </div>
 
             <style jsx global>{`
+                .ml-link { border: 0; background: none; color: #2952D1; font: inherit; font-weight: 700; cursor: pointer; padding: 0; }
                 .ml-table { min-width: 680px; }
                 .ml-foot { display: flex; align-items: center; justify-content: flex-end; gap: 24px; padding: 14px 18px; font-size: 13px; color: #475467; flex-wrap: wrap; }
                 .ml-per { display: flex; align-items: center; gap: 8px; }

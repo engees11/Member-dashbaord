@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import NotificationBell from './NotificationBell';
-import { IconGrid, IconUsers, IconTeam, IconTrash, IconUpload, IconDownload, IconSettings, IconLogout, IconSearch, IconMenu, IconChevron, IconFile } from './Icons';
+import { IconGrid, IconUsers, IconTeam, IconTrash, IconUpload, IconDownload, IconSettings, IconLogout, IconSearch, IconMenu, IconChevron, IconFile, IconClock } from './Icons';
 import { authFetch, clearSession, getToken, getUser, saveUser, initials } from '../lib/session';
 
 const STATUS_LINKS = [
@@ -77,6 +77,8 @@ export default function AppShell({ children }) {
     const [team, setTeam] = useState([]);
     const [main, setMain] = useState(null);
     const [q, setQ] = useState('');
+    const searchTimer = useRef(null);
+    const pushedQ = useRef(''); // the search text this box has put in the address itself
     const onMembersPage = path.startsWith('/admin/members');
     const [membersOpen, setMembersOpen] = useState(onMembersPage);
 
@@ -115,6 +117,14 @@ export default function AppShell({ children }) {
         return () => window.removeEventListener('team-changed', onTeam);
     }, []);
 
+    // the search box shows the search that is in the address (it also clears when "Clear search" is pressed in the list)
+    useEffect(() => {
+        const v = typeof router.query.q === 'string' ? router.query.q : '';
+        if (v === pushedQ.current) return;
+        pushedQ.current = v;
+        setQ(v);
+    }, [router.query.q]);
+
     if (!user) return <>{children}</>;
 
     const onMembers = path.startsWith('/admin/members');
@@ -127,9 +137,25 @@ export default function AppShell({ children }) {
         clearSession();
         router.push('/');
     };
+    // searching is over ALL members (every tab and status) and starts from the first letter or digit
+    const pushSearch = (value) => {
+        const v = value.trim();
+        pushedQ.current = v;
+        const query = { status: 'all' };
+        if (v) query.q = v;
+        if (onMembersPage) router.replace({ pathname: '/admin/members', query }, undefined, { shallow: true });
+        else if (v) router.push({ pathname: '/admin/members', query });
+    };
+    const onSearchChange = (e) => {
+        const v = e.target.value;
+        setQ(v);
+        clearTimeout(searchTimer.current);
+        searchTimer.current = setTimeout(() => pushSearch(v), 200);
+    };
     const search = (e) => {
         e.preventDefault();
-        router.push(`/admin/members?status=all&q=${encodeURIComponent(q.trim())}`);
+        clearTimeout(searchTimer.current);
+        pushSearch(q);
     };
 
     return (
@@ -189,6 +215,7 @@ export default function AppShell({ children }) {
                     {admin && <Link href="/admin/export" className={`sh-nav ${path === '/admin/export' ? 'on' : ''}`}><IconDownload size={20} />Export</Link>}
                     {admin && <Link href="/admin/deleted" className={`sh-nav ${path === '/admin/deleted' ? 'on' : ''}`}><IconTrash size={20} />Deleted</Link>}
                     {admin && <Link href="/admin/skipped" className={`sh-nav ${path === '/admin/skipped' ? 'on' : ''}`}><IconFile size={20} />Duplicates</Link>}
+                    <Link href="/admin/progress" className={`sh-nav ${path === '/admin/progress' ? 'on' : ''}`}><IconClock size={20} />Update Progress</Link>
 
                     <div className="sh-lbl">ACCOUNT</div>
                     <Link href="/admin/settings" className={`sh-nav ${path === '/admin/settings' ? 'on' : ''}`}><IconSettings size={20} />Settings</Link>
@@ -205,7 +232,7 @@ export default function AppShell({ children }) {
                     <button type="button" className="sh-ib" onClick={() => setOpen((o) => !o)} aria-label="Show or hide the menu"><IconMenu size={20} /></button>
                     <form className="sh-search" onSubmit={search}>
                         <IconSearch size={18} />
-                        <input type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, mobile or membership no." aria-label="Search members" />
+                        <input type="text" value={q} onChange={onSearchChange} placeholder="Search name, mobile, membership no., Aadhaar, PAN" aria-label="Search members" />
                     </form>
                     <span className="sh-spacer" />
                     <NotificationBell />
