@@ -4,6 +4,8 @@ import { getUser, clearSession } from '../../lib/session';
 import StatusTimeline from '../../components/StatusTimeline';
 import MemberForm from '../../components/MemberForm';
 import { fmtDate } from '../../lib/format';
+import Avatar from '../../components/Avatar';
+import PhotoViewer from '../../components/PhotoViewer';
 import { sortMembers, applyAddedFilter, isUnseen, matchesSearch, paginate, PAGE_SIZES } from '../../lib/memberFilters';
 import { isRetired, isRetiredMember, ageOn, refFromIso } from '../../lib/retired';
 
@@ -61,6 +63,8 @@ export default function MembersList() {
 
     const [sort, setSort] = useState('latest');
     const [added, setAdded] = useState('any');
+    const [viewPhoto, setViewPhoto] = useState(false); // the big photo of the open member
+    useEffect(() => { setViewPhoto(false); }, [selected ? selected.id : null]);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     // a new filter, sort, search or page size starts again from page 1
@@ -246,12 +250,16 @@ export default function MembersList() {
             {selected && (
                 <div className="table-card detail-view" ref={detailRef} style={{ marginBottom: 24, scrollMarginTop: 90 }}>
                     <div className="table-head">
-                        <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 0 }}>
+                            <Avatar member={selected} size={88} onClick={() => setViewPhoto(true)} title="View photo" />
+                            <div>
                             <h3>{fullName(selected) || selected.email || 'Member detail'}</h3>
                             <p>Full record and Aadhaar images{ageOn(selected.birth_date, ref) !== null && ` · Age ${ageOn(selected.birth_date, ref)}${meetingIso ? ` on ${fmtDate(meetingIso)}` : ''}${isRetiredMember(selected, ref) ? ' · Retired' : ''}`}</p>
+                            </div>
                         </div>
                         <button className="btn btn-gray btn-sm" onClick={() => setSelected(null)}>Back</button>
                     </div>
+                    {viewPhoto && selected.photo_url && <PhotoViewer url={selected.photo_url} name={fullName(selected)} onClose={() => setViewPhoto(false)} />}
                     <div className="detail-grid">
                         {rowType(selected) !== 'aadhaar_update' && (
                             <>
@@ -262,6 +270,12 @@ export default function MembersList() {
                                 <div className="item"><b>Native place</b>{selected.native_place || '-'}</div>
                                 <div className="item"><b>Address</b>{selected.address || '-'}</div>
                                 <div className="item"><b>Area</b>{selected.area || '-'}</div>
+                                <div className="item"><b>Blood group</b>{selected.blood_group || '-'}</div>
+                                <div className="item"><b>Qualification</b>{selected.qualification || '-'}</div>
+                                <div className="item"><b>Hobbies</b>{selected.hobbies || '-'}</div>
+                                <div className="item"><b>Marriage date</b>{fmtDate(selected.marriage_date)}</div>
+                                <div className="item"><b>Business / Profession</b>{selected.business_name || '-'}</div>
+                                <div className="item"><b>Business description</b>{selected.business_description || '-'}</div>
                             </>
                         )}
                         <div className="item"><b>Membership no</b>{selected.membership_no || '-'}</div>
@@ -335,7 +349,7 @@ export default function MembersList() {
                                 pg.rows.map((m) => (
                                     <tr key={m.id}>
                                         <td><b>{m.membership_no || '-'}</b></td>
-                                        <td>{fullName(m) || m.email || '-'}{isUnseen(m) && <span className="new-tag">NEW</span>}</td>
+                                        <td><div className="ml-name"><Avatar member={m} size={36} /><span>{fullName(m) || m.email || '-'}{isUnseen(m) && <span className="new-tag">NEW</span>}</span></div></td>
                                         <td>{m.whatsapp_number || '-'}</td>
                                         <td>{m.native_place || '-'}</td>
                                         <td><span className={`badge b-${m.status}`} style={m.status === 'retired' ? { background: '#F3E8DC', color: '#7A4B1E' } : undefined}>{LABELS[m.status] || m.status}</span>{m.status !== 'retired' && isRetired(m, ref) && <span className="badge" style={{ background: '#FEE4E2', color: '#B42318', marginLeft: 6 }}>Retired</span>}</td>
@@ -366,6 +380,7 @@ export default function MembersList() {
             <style jsx global>{`
                 .ml-link { border: 0; background: none; color: #2952D1; font: inherit; font-weight: 700; cursor: pointer; padding: 0; }
                 .ml-table { min-width: 680px; }
+                .ml-name { display: flex; align-items: center; gap: 10px; }
                 .ml-foot { display: flex; align-items: center; justify-content: flex-end; gap: 24px; padding: 14px 18px; font-size: 13px; color: #475467; flex-wrap: wrap; }
                 .ml-per { display: flex; align-items: center; gap: 8px; }
                 .ml-arrows { display: flex; gap: 6px; }

@@ -2,6 +2,11 @@ import { supabase } from '../../lib/supabase';
 import { logActivity, memberLabel } from '../../lib/activity';
 import { normalizePan, isValidPan } from '../../lib/format';
 import { missingColumn } from '../../lib/teamUtil';
+import { cleanMemberInput, PAPER_KEYS } from '../../lib/memberFields';
+
+// new optional details: checked here, and the form is still saved if their database columns are not there yet
+const EXTRA = [...PAPER_KEYS, 'photo_url'];
+const OPTIONAL_COLUMNS = [...EXTRA, 'seen_at', 'pan_number']; // columns that come from a later SQL: if one is not there yet, the form is saved without it
 
 export const config = { api: { bodyParser: { sizeLimit: '8mb' } } };
 
@@ -15,6 +20,14 @@ export default async function handler(req, res) {
             const pan = normalizePan(rest.pan_number);
             if (pan && !isValidPan(pan)) return res.json({ success: false, message: 'PAN number is not valid. Example: ABCDE1234F' });
             rest.pan_number = pan;
+        }
+        // blood group, qualification, hobbies, marriage date, business, photo: the same checks as in the dashboard
+        const extra = {};
+        for (const k of EXTRA) if (k in rest) extra[k] = rest[k];
+        if (Object.keys(extra).length) {
+            const c = cleanMemberInput(extra);
+            if (c.error) return res.json({ success: false, message: c.error });
+            for (const k of Object.keys(extra)) rest[k] = c.fields[k];
         }
         const nowIso = new Date().toISOString();
         const fields = { ...rest, whatsapp_number, status: 'new', updated_at: nowIso, submitted_at: nowIso };
@@ -52,6 +65,14 @@ export default async function handler(req, res) {
             // supabase/pan-number.sql was not run yet: save everything else so the member's form is not lost
             console.error('[submit-form] the pan_number column is missing, saved without PAN. Run supabase/pan-number.sql');
             delete fields.pan_number;
+            await save();
+        }
+        // a new optional column that is not in the database yet (its SQL was not run): save the form without that detail, nobody loses their form
+        for (let i = 0; i < OPTIONAL_COLUMNS.length && error && missingColumn(error); i++) {
+            const col = (/'([a-z_]+)' column/.exec(String(error.message || '')) || [])[1];
+            if (!col || !OPTIONAL_COLUMNS.includes(col) || !(col in fields)) break;
+            console.error(`[submit-form] the ${col} column is missing, saved without it. Run the SQL for it in supabase/`);
+            delete fields[col];
             await save();
         }
         if (error) return res.json({ success: false, message: error.message });

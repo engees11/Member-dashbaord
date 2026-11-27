@@ -6,8 +6,10 @@ import { buildXlsx } from '../../lib/xlsx';
 const HEADER = [
     'Membership No', 'Sr No', 'First Name', 'Father Name', 'Surname', 'WhatsApp Number', 'Email', 'Birth Date',
     'Native Place', 'Address', 'Area', 'Aadhaar Number', 'PAN Number', 'Status', 'Form', 'Added On', 'Deleted',
+    'Blood Group', 'Qualification', 'Hobbies', 'Marriage Date', 'Business / Profession', 'Business Description',
 ];
-const WIDTHS = [14, 8, 16, 16, 16, 18, 26, 12, 16, 40, 16, 18, 14, 12, 16, 12, 9];
+const WIDTHS = [14, 8, 16, 16, 16, 18, 26, 12, 16, 40, 16, 18, 14, 12, 16, 12, 9, 12, 18, 18, 14, 22, 26];
+const day = (v) => (v ? fmtDate(v) : '');
 const STATUS = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected', expired: 'Expired', new: 'New', need_review: 'Need Review', retired: 'Retired' };
 const FORM = { aadhaar_update: 'Aadhaar form', details_update: 'Full Details form' };
 
@@ -16,6 +18,7 @@ const rowOf = (m) => [
     m.birth_date ? fmtDate(m.birth_date) : '', m.native_place, m.address, m.area, m.aadhaar_number, m.pan_number,
     STATUS[m.status] || m.status || '', FORM[m.form_type] || (m.form_type ? m.form_type : 'Not submitted'),
     m.created_at ? fmtDate(m.created_at) : '', m.deleted_at ? 'Yes' : '',
+    m.blood_group, m.qualification, m.hobbies, day(m.marriage_date), m.business_name, m.business_description,
 ].map((v) => (v == null ? '' : String(v)));
 
 const csvCell = (v) => `"${String(v).replace(/"/g, '""')}"`;

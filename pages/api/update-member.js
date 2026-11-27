@@ -1,10 +1,12 @@
 import { supabase } from '../../lib/supabase';
 import { requireUser } from '../../lib/auth';
 import { logActivity, memberLabel } from '../../lib/activity';
-import { cleanMemberInput, FIELD_LABELS } from '../../lib/memberFields';
+import { cleanMemberInput, FIELD_LABELS, PAPER_KEYS } from '../../lib/memberFields';
 import { missingColumn } from '../../lib/teamUtil';
 
 const SETUP = 'PAN needs one database update. Run supabase/pan-number.sql in the Supabase SQL Editor first.';
+const PHOTO_SETUP = 'Photos need one database update. Run supabase/profile-photo.sql in the Supabase SQL Editor first.';
+const PAPER_SETUP = 'The paper-form details need one database update. Run supabase/paper-form-fields.sql in the Supabase SQL Editor first.';
 
 // POST /api/update-member { id, ...fields }  (any logged-in team member): edit a member's details
 export default async function handler(req, res) {
@@ -48,6 +50,8 @@ export default async function handler(req, res) {
 
         const { error } = await supabase.from('members').update({ ...changed, updated_at: new Date().toISOString() }).eq('id', id);
         if (error) {
+            if ('photo_url' in changed && missingColumn(error) && /photo_url/.test(String(error.message || ''))) return res.status(500).json({ success: false, message: PHOTO_SETUP });
+            if (PAPER_KEYS.some((k) => k in changed) && missingColumn(error)) return res.status(500).json({ success: false, message: PAPER_SETUP });
             if ('pan_number' in changed && missingColumn(error)) return res.status(500).json({ success: false, message: SETUP });
             return res.status(500).json({ success: false, message: error.message });
         }

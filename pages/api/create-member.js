@@ -1,8 +1,11 @@
 import { supabase } from '../../lib/supabase';
 import { requireUser, isAdmin } from '../../lib/auth';
 import { logActivity, memberLabel } from '../../lib/activity';
-import { cleanMemberInput } from '../../lib/memberFields';
+import { cleanMemberInput, PAPER_KEYS } from '../../lib/memberFields';
 import { missingColumn } from '../../lib/teamUtil';
+
+const PHOTO_SETUP = 'Photos need one database update. Run supabase/profile-photo.sql in the Supabase SQL Editor first.';
+const PAPER_SETUP = 'The paper-form details need one database update. Run supabase/paper-form-fields.sql in the Supabase SQL Editor first.';
 
 // POST /api/create-member (admin): add a member by hand
 export default async function handler(req, res) {
@@ -26,6 +29,9 @@ export default async function handler(req, res) {
         const cleaned = cleanMemberInput(body);
         if (cleaned.error) return res.status(400).json({ success: false, message: cleaned.error });
         const record = { ...cleaned.fields, form_type: section || null, status };
+        // empty paper-form details are simply not sent, so adding a member keeps working before supabase/paper-form-fields.sql is run
+        for (const k of PAPER_KEYS) if (record[k] === null || record[k] === undefined) delete record[k];
+        if (record.photo_url === null || record.photo_url === undefined) delete record.photo_url;
 
         const { data: samePhone } = await supabase.from('members').select('id').eq('whatsapp_number', record.whatsapp_number).limit(1).maybeSingle();
         if (samePhone) return res.status(409).json({ success: false, message: 'A member with this mobile number already exists' });
@@ -36,6 +42,12 @@ export default async function handler(req, res) {
 
         const { data: created, error } = await supabase.from('members').insert(record).select('*').maybeSingle();
         if (error) {
+            if ('photo_url' in record && missingColumn(error) && /photo_url/.test(String(error.message || ''))) {
+                return res.status(500).json({ success: false, message: PHOTO_SETUP });
+            }
+            if (PAPER_KEYS.some((k) => k in record) && missingColumn(error)) {
+                return res.status(500).json({ success: false, message: PAPER_SETUP });
+            }
             if (record.pan_number && missingColumn(error)) {
                 return res.status(500).json({ success: false, message: 'PAN needs one database update. Run supabase/pan-number.sql in the Supabase SQL Editor first.' });
             }

@@ -1,11 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { authFetch } from '../lib/session';
 import { fmtDate } from '../lib/format';
 import { uploadDoc, validateFile } from '../lib/supabaseClient';
+import { BLOOD_GROUPS } from '../lib/memberFields';
+import { squareJpeg, isPhone, canUseCamera } from '../lib/photo';
+import Avatar from './Avatar';
+import CameraCapture from './CameraCapture';
 
 const EMPTY = {
     membership_no: '', first_name: '', father_name: '', last_name: '', birth_date: '', native_place: '',
     whatsapp_number: '', email: '', address: '', area: '', aadhaar_number: '', pan_number: '',
+    blood_group: '', qualification: '', hobbies: '', marriage_date: '', business_name: '', business_description: '',
     form_type: 'details_update', status: 'new',
 };
 const phoneForForm = (v) => (/^91\d{10}$/.test(String(v || '')) ? String(v).slice(2) : String(v || ''));
@@ -19,6 +24,12 @@ export default function MemberForm({ open, member, onClose, onSaved, initial, no
     const [saving, setSaving] = useState(false);
     const [front, setFront] = useState(null); // Aadhaar photos chosen in this form
     const [back, setBack] = useState(null);
+    const [photo, setPhoto] = useState(null); // the profile photo chosen in this form (already cut to a small square)
+    const [preview, setPreview] = useState('');
+    const [removePhoto, setRemovePhoto] = useState(false);
+    const [cam, setCam] = useState(false);
+    const fileRef = useRef(null);
+    const camRef = useRef(null);
 
     useEffect(() => {
         if (!open) return undefined;
@@ -26,6 +37,9 @@ export default function MemberForm({ open, member, onClose, onSaved, initial, no
         setSaving(false);
         setFront(null);
         setBack(null);
+        setPhoto(null);
+        setRemovePhoto(false);
+        setCam(false);
         setF(member ? {
             membership_no: member.membership_no || '',
             first_name: member.first_name || '',
@@ -39,6 +53,12 @@ export default function MemberForm({ open, member, onClose, onSaved, initial, no
             area: member.area || '',
             aadhaar_number: member.aadhaar_number || '',
             pan_number: member.pan_number || '',
+            blood_group: member.blood_group || '',
+            qualification: member.qualification || '',
+            hobbies: member.hobbies || '',
+            marriage_date: member.marriage_date ? fmtDate(member.marriage_date) : '',
+            business_name: member.business_name || '',
+            business_description: member.business_description || '',
             form_type: member.form_type || '',
             status: member.status || 'new',
         } : { ...EMPTY, ...(initial || {}) });
@@ -47,9 +67,28 @@ export default function MemberForm({ open, member, onClose, onSaved, initial, no
         return () => document.removeEventListener('keydown', onKey);
     }, [open, member, initial]);
 
+    // a small preview of the chosen photo
+    useEffect(() => {
+        if (!photo) { setPreview(''); return undefined; }
+        const u = URL.createObjectURL(photo);
+        setPreview(u);
+        return () => URL.revokeObjectURL(u);
+    }, [photo]);
+
     if (!open) return null;
 
     const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+
+    // upload: any picture is cut to a small square; camera: a phone opens its own camera, a computer opens the webcam here
+    const takeFile = async (file) => {
+        if (!file) return;
+        if (!/^image\//.test(file.type || '')) { setErr('Choose a photo (JPG, PNG or WEBP).'); return; }
+        setErr('');
+        try { setPhoto(await squareJpeg(file)); setRemovePhoto(false); } catch (e2) { setErr('Could not read this photo. Please try another one.'); }
+    };
+    const takeCaptured = (file) => { setCam(false); setPhoto(file); setRemovePhoto(false); setErr(''); };
+    const openCamera = () => { if (isPhone() || !canUseCamera()) { if (camRef.current) camRef.current.click(); } else setCam(true); };
+    const hasPhoto = !!preview || !!(member && member.photo_url && !removePhoto);
 
     const submit = async (e) => {
         e.preventDefault();
@@ -68,6 +107,8 @@ export default function MemberForm({ open, member, onClose, onSaved, initial, no
             const photos = {};
             if (front) photos.aadhaar_front_url = await uploadDoc('aadhaar-front', phone, front);
             if (back) photos.aadhaar_back_url = await uploadDoc('aadhaar-back', phone, back);
+            if (photo) photos.photo_url = await uploadDoc('profile-photo', phone, photo);
+            else if (removePhoto && editing) photos.photo_url = '';
             const { status, ...rest } = f; // status is chosen only when adding; later use the Approve / Reject buttons
             const res = await authFetch(editing ? '/api/update-member' : '/api/create-member', {
                 method: 'POST',
@@ -98,6 +139,21 @@ export default function MemberForm({ open, member, onClose, onSaved, initial, no
                     {err && <div className="msg msg-err">{err}</div>}
                     <p className="mf-note"><Star /> means required. Everything else can be left empty.</p>
                     <div className="mf-grid">
+                        <div className="mf-h">PHOTO</div>
+                        <div className="td-field mf-full">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                                <Avatar member={{ ...(member || {}), first_name: f.first_name || (member && member.first_name) || '' }} size={88} src={preview || (removePhoto ? '' : (member && member.photo_url) || '')} />
+                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                    <button type="button" className="td-btn td-btn-gray" onClick={() => fileRef.current && fileRef.current.click()}>Upload photo</button>
+                                    <button type="button" className="td-btn td-btn-gray" onClick={openCamera}>Take photo</button>
+                                    {hasPhoto && <button type="button" className="td-btn td-btn-gray" onClick={() => { setPhoto(null); setRemovePhoto(true); }}>Remove</button>}
+                                </div>
+                            </div>
+                            <span className="mf-hint">The photo is cut to a small square automatically (JPG, PNG or WEBP). It is saved when you press {editing ? 'Save changes' : 'Add member'}.</span>
+                            <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { takeFile(e.target.files[0]); e.target.value = ''; }} />
+                            <input ref={camRef} type="file" accept="image/*" capture="user" hidden onChange={(e) => { takeFile(e.target.files[0]); e.target.value = ''; }} />
+                        </div>
+
                         <div className="mf-h">LIST</div>
                         <div className="td-field">
                             <label htmlFor="mf-ft">Section</label>
@@ -132,6 +188,20 @@ export default function MemberForm({ open, member, onClose, onSaved, initial, no
                         <div className="td-field"><label htmlFor="mf-dob">Birth date</label><input id="mf-dob" value={f.birth_date} onChange={set('birth_date')} placeholder="17/09/1992" /><span className="mf-hint">DD/MM/YYYY</span></div>
                         <div className="td-field mf-full"><label htmlFor="mf-np">Native place</label><input id="mf-np" value={f.native_place} onChange={set('native_place')} /></div>
 
+                        <div className="mf-h">MORE DETAILS</div>
+                        <div className="td-field">
+                            <label htmlFor="mf-bg">Blood group</label>
+                            <select id="mf-bg" value={f.blood_group} onChange={set('blood_group')}>
+                                <option value="">Not known</option>
+                                {(f.blood_group && !BLOOD_GROUPS.includes(f.blood_group) ? [f.blood_group, ...BLOOD_GROUPS] : BLOOD_GROUPS).map((g) => <option key={g} value={g}>{g}</option>)}
+                            </select>
+                        </div>
+                        <div className="td-field"><label htmlFor="mf-ql">Qualification</label><input id="mf-ql" value={f.qualification} onChange={set('qualification')} placeholder="BBA, B.Com, CA..." /></div>
+                        <div className="td-field"><label htmlFor="mf-hb">Hobbies</label><input id="mf-hb" value={f.hobbies} onChange={set('hobbies')} /></div>
+                        <div className="td-field"><label htmlFor="mf-md">Marriage date</label><input id="mf-md" value={f.marriage_date} onChange={set('marriage_date')} placeholder="24/11/2019" /><span className="mf-hint">Day/month/year. Leave empty if not married.</span></div>
+                        <div className="td-field mf-full"><label htmlFor="mf-bn">Business / Profession</label><input id="mf-bn" value={f.business_name} onChange={set('business_name')} placeholder="Textile, CA, Doctor..." /></div>
+                        <div className="td-field mf-full"><label htmlFor="mf-bd">Business description</label><input id="mf-bd" value={f.business_description} onChange={set('business_description')} /></div>
+
                         <div className="mf-h">CONTACT</div>
                         <div className="td-field">
                             <label htmlFor="mf-ph">Mobile number <Star /></label>
@@ -162,6 +232,7 @@ export default function MemberForm({ open, member, onClose, onSaved, initial, no
                     </div>
                 </form>
             </div>
+            {cam && <CameraCapture onCapture={takeCaptured} onClose={() => setCam(false)} />}
         </div>
     );
 }

@@ -1,6 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { uploadDoc, validateFile } from '../../lib/supabaseClient';
+import { BLOOD_GROUPS } from '../../lib/memberFields';
+import { squareJpeg, isPhone, canUseCamera } from '../../lib/photo';
+import Avatar from '../../components/Avatar';
+import CameraCapture from '../../components/CameraCapture';
 
 const TOTAL_FIELDS = 12;
 
@@ -11,7 +15,13 @@ export default function UpdateDetails() {
     const [form, setForm] = useState({
         first_name: '', father_name: '', last_name: '', email: '',
         phone: '', dob: '', native_place: '', address: '', area: '', aadhaar_number: '', pan_number: '',
+        blood_group: '', qualification: '', hobbies: '', marriage_date: '', business_name: '', business_description: '',
     });
+    const [photo, setPhoto] = useState(null); // the member's photo, already cut to a small square
+    const [preview, setPreview] = useState('');
+    const [cam, setCam] = useState(false);
+    const fileRef = useRef(null);
+    const camRef = useRef(null);
     const [front, setFront] = useState(null);
     const [back, setBack] = useState(null);
     const [payment, setPayment] = useState(null);
@@ -20,6 +30,21 @@ export default function UpdateDetails() {
     const [done, setDone] = useState(false);
 
     const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+
+    useEffect(() => {
+        if (!photo) { setPreview(''); return undefined; }
+        const u = URL.createObjectURL(photo);
+        setPreview(u);
+        return () => URL.revokeObjectURL(u);
+    }, [photo]);
+    // upload: any picture is cut to a small square; camera: a phone opens its own camera, a computer opens the webcam here
+    const takeFile = async (file) => {
+        if (!file) return;
+        if (!/^image\//.test(file.type || '')) { setErr('Please choose a photo (JPG, PNG or WEBP).'); return; }
+        setErr('');
+        try { setPhoto(await squareJpeg(file)); } catch (e) { setErr('Could not read this photo. Please try another one.'); }
+    };
+    const openCamera = () => { if (isPhone() || !canUseCamera()) { if (camRef.current) camRef.current.click(); } else setCam(true); };
     const filled = [
         form.first_name, form.father_name, form.last_name, form.phone,
         form.dob, form.native_place, form.address, form.area, form.aadhaar_number, form.pan_number, front, back,
@@ -48,6 +73,7 @@ export default function UpdateDetails() {
             const frontUrl = await uploadDoc('aadhaar-front', form.phone, front);
             const backUrl = await uploadDoc('aadhaar-back', form.phone, back);
             const paymentUrl = payment ? await uploadDoc('payment-proof', form.phone, payment) : '';
+            const photoUrl = photo ? await uploadDoc('profile-photo', form.phone, photo) : '';
             const res = await fetch('/api/submit-form', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -68,6 +94,13 @@ export default function UpdateDetails() {
                     aadhaar_front_url: frontUrl,
                     aadhaar_back_url: backUrl,
                     payment_proof_url: paymentUrl,
+                    blood_group: form.blood_group,
+                    qualification: form.qualification,
+                    hobbies: form.hobbies,
+                    marriage_date: form.marriage_date,
+                    business_name: form.business_name,
+                    business_description: form.business_description,
+                    photo_url: photoUrl,
                 }),
             });
             const data = await res.json();
@@ -103,6 +136,22 @@ export default function UpdateDetails() {
             </div>
 
             {err && <div className="gform-banner err">{err}</div>}
+
+            <div className="gform-q">
+                <label>Your Photo (optional)</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginTop: 8 }}>
+                    <Avatar member={{ first_name: form.first_name }} size={88} src={preview} />
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <button type="button" className="gform-submit-btn" style={{ padding: '10px 16px', fontSize: 14 }} onClick={() => fileRef.current && fileRef.current.click()}>Upload photo</button>
+                        <button type="button" className="gform-submit-btn" style={{ padding: '10px 16px', fontSize: 14 }} onClick={openCamera}>Take photo</button>
+                        {preview && <button type="button" className="gform-submit-btn" style={{ padding: '10px 16px', fontSize: 14, background: '#64748b' }} onClick={() => setPhoto(null)}>Remove</button>}
+                    </div>
+                </div>
+                <div style={{ fontSize: 12, color: '#4B5563', marginTop: 8 }}>A clear photo of your face. It is cut to a small square automatically.</div>
+                <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { takeFile(e.target.files[0]); e.target.value = ''; }} />
+                <input ref={camRef} type="file" accept="image/*" capture="user" hidden onChange={(e) => { takeFile(e.target.files[0]); e.target.value = ''; }} />
+            </div>
+            {cam && <CameraCapture onCapture={(file) => { setCam(false); setPhoto(file); setErr(''); }} onClose={() => setCam(false)} />}
 
             <div className="gform-q">
                 <label>First Name<span className="req">*</span></label>
@@ -147,6 +196,40 @@ export default function UpdateDetails() {
             <div className="gform-q">
                 <label>Area<span className="req">*</span></label>
                 <input type="text" value={form.area} onChange={set('area')} placeholder="Your answer" />
+            </div>
+
+            <div className="gform-q">
+                <label>Blood Group</label>
+                <select value={form.blood_group} onChange={set('blood_group')}>
+                    <option value="">Not known</option>
+                    {BLOOD_GROUPS.map((g) => <option key={g} value={g}>{g}</option>)}
+                </select>
+            </div>
+
+            <div className="gform-q">
+                <label>Qualification</label>
+                <input type="text" value={form.qualification} onChange={set('qualification')} placeholder="Your answer" />
+            </div>
+
+            <div className="gform-q">
+                <label>Hobbies</label>
+                <input type="text" value={form.hobbies} onChange={set('hobbies')} placeholder="Your answer" />
+            </div>
+
+            <div className="gform-q">
+                <label>Marriage Date</label>
+                <input type="date" value={form.marriage_date} onChange={set('marriage_date')} />
+                <div style={{ fontSize: 12, color: '#4B5563', marginTop: 8 }}>Leave empty if not married.</div>
+            </div>
+
+            <div className="gform-q">
+                <label>Business / Profession Name</label>
+                <input type="text" value={form.business_name} onChange={set('business_name')} placeholder="Your answer" />
+            </div>
+
+            <div className="gform-q">
+                <label>Business / Profession Description</label>
+                <textarea rows={3} value={form.business_description} onChange={set('business_description')} placeholder="Your answer" />
             </div>
 
             <div className="gform-q">
