@@ -99,7 +99,6 @@ export default function AppShell({ children }) {
         if (!getToken()) return undefined;
         const u = getUser() || { role: 'admin', name: 'Admin' };
         setUser(u);
-        if (window.innerWidth < 900) setOpen(false);
         if (u.role === 'admin') loadTeam();
         (async () => {
             try {
@@ -177,6 +176,31 @@ export default function AppShell({ children }) {
                 .sh-split-btn { flex: 0 0 44px; border: 0; border-radius: 10px; background: transparent; color: #C9D3E3; cursor: pointer; display: flex; align-items: center; justify-content: center; }
                 .sh-split-btn:hover { background: #2A384E; color: #fff; }
                 .sh-split-btn.on { color: #fff; }
+
+                /* phone / narrow window: the menu is OPEN from the start, as a slimmer column BESIDE the page (not on top of it).
+                   The three-line button (which stays visible, it is not covered) hides it and shows it again. */
+                @media (max-width: 899px) {
+                    .sh-app .sh-side { position: sticky; top: 0; height: 100vh; height: 100dvh; flex: 0 0 200px; width: 200px; box-shadow: none; z-index: auto; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+                    .sh-app .sh-main { min-width: 0; }
+                    .sh-app .sh-content { overflow-x: auto; }
+                }
+                @media (max-width: 599px) {
+                    .sh-app .sh-side { flex-basis: 152px; width: 152px; padding: 12px 8px; }
+                    .sh-app .sh-nav { font-size: 13px; gap: 8px; padding: 0 8px; min-height: 44px; }
+                    .sh-app .sh-brand { gap: 8px; padding-bottom: 12px; }
+                    .sh-app .sh-brand small { display: none; }
+                    .sh-app .sh-logo { width: 34px; height: 34px; }
+                    .sh-app .sh-lbl { padding: 12px 6px 4px; }
+                    .sh-app .sh-me > div { display: none; }
+                    .sh-top { flex-wrap: wrap; padding: 8px 10px; gap: 8px; min-height: 56px; }
+                    .sh-search { order: 5; flex: 1 1 100%; max-width: none; }
+                    .sh-spacer { flex: 1 1 0; }
+                    .sh-chip > div, .sh-chip > .sh-chev { display: none; }
+                    .sh-content .page { padding: 12px 10px; }
+                    .sh-content .topbar { padding: 14px; flex-wrap: wrap; gap: 10px; }
+                    .sh-content .topbar h1 { font-size: 20px; }
+                    .sh-content .table-card .table-head { padding: 12px; }
+                }
             `}</style>
             <aside className="sh-side" aria-label="Main menu">
                 <div className="sh-brand">
